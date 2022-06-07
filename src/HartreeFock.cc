@@ -173,32 +173,37 @@ void HartreeFock::UpdateDensityMatrix() {
 void HartreeFock::CalcEnergy() {
   Orbits& orbits = modelspace->GetOrbits();
   int norbs = orbits.GetNumberOrbits();
-  double e1 = 0.0;
-  double e2 = 0.0;
+  E1 = 0.0;
+  E2 = 0.0;
   for (int i=0; i<norbs; i++) {
     for (int j=0; j<norbs; j++) {
       Orbit& oi = orbits.GetOrbit(i);
-      e1 += H.OneBody(i,j) * rho(i,j) * (oi.j2+1);
-      e2 += V(i,j) * rho(i,j) * 0.5 * (oi.j2+1);
+      E1 += H.OneBody(i,j) * rho(i,j) * (oi.j2+1);
+      E2 += V(i,j) * rho(i,j) * 0.5 * (oi.j2+1);
     }
   }
-  EHF = e1+e2;
+  EHF = E1+E2;
 }
 
-void HartreeFock::PrintStatus(int n_iter, bool detail) {
-  std::cout << "\n";
-  printf("nth iteration: %d, HF energy: %3f ", n_iter, EHF);
-  if (detail) {
-    std::cout << "\n" << "\n";
-    F.print("Fock Matrix");
-    std::cout << "\n";
-    SPEs.t().print("SPEs");
-    std::cout << "\n";
-    C.print("Coeffs");
-    std::cout << "\n";
-    rho.print("Density Matrix");
-    std::cout << "\n";
-  }
+void HartreeFock::PrintStatus(int n_iter) {
+  std::cout << "n iter:" << std::setw(4) << n_iter
+    << ", OneBody: " << std::fixed << std::setw(12) << E1
+    << ", TwoBody: " << std::fixed << std::setw(12) << E2
+    << ", EHF: " << std::fixed << std::setw(12) << EHF
+    << std::endl;
+  //std::cout << "\n";
+  //printf("nth iteration: %d, HF energy: %3f ", n_iter, EHF);
+  //if (detail) {
+  //  std::cout << "\n" << "\n";
+  //  F.print("Fock Matrix");
+  //  std::cout << "\n";
+  //  SPEs.t().print("SPEs");
+  //  std::cout << "\n";
+  //  C.print("Coeffs");
+  //  std::cout << "\n";
+  //  rho.print("Density Matrix");
+  //  std::cout << "\n";
+  //}
 }
 
 

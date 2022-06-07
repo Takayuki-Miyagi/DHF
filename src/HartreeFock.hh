@@ -37,7 +37,7 @@ class HartreeFock
     arma::vec SPEs;
     arma::uvec ElectronStates, PositronStates;
     double r;
-    double EHF;
+    double E1, E2, EHF;
 
     // Constructor
     ~HartreeFock();
@@ -48,6 +48,6 @@ class HartreeFock
     void DiagonalizeFock();
     void UpdateDensityMatrix();
     void Solve();
-    void PrintStatus(int n_itr, bool detail=true);
+    void PrintStatus(int n_itr);
 };
 #endif
