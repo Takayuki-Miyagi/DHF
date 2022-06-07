@@ -137,7 +137,8 @@ void Operator::OrthoNormalize()
     arma::mat Uket;
     if(ichbra==ichket) {Uket = Ubra;}
     else {Uket = EmbedBasisTrans2(T, *chket);}
-    opch.MEs = Ubra * opch.MEs * Uket.t();
+    auto& out = TwoBody.Channels[{ichbra,ichket}].MEs;
+    out = Ubra * opch.MEs * Uket.t();
   }
   orthonormalized = true;
 }

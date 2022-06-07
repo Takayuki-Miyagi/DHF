@@ -206,7 +206,7 @@ double TwoBodyOperator::MECoulomb(Orbit& o1, Orbit& o2, Orbit& o3, Orbit& o4, in
   double Z = modelspace->GetProtonNumber();
   int Lmin = std::max(std::abs(o1.j2-o3.j2), std::abs(o2.j2-o4.j2))/2;
   int Lmax = std::min(        (o1.j2+o3.j2),         (o2.j2+o4.j2))/2;
-  double rmax = 20;
+  double rmax = 50;
   int NMesh = 100;
   gsl_integration_fixed_workspace *workspace;
   const gsl_integration_fixed_type *T = gsl_integration_fixed_legendre;

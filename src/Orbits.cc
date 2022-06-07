@@ -246,7 +246,7 @@ int Orbits::GetOrbitIndex(int n, int k, int e2)
 
 
 
-size_t limit = 10000;
+size_t limit = 100;
 double epsabs = 1.e-6;
 double epsrel = 1.e-10;
 
@@ -331,9 +331,9 @@ double MEKinetic(Orbit& o1, Orbit& o2, double zeta, double Z) {
 }
 
 double NormCheck(Orbit& o1, Orbit& o2, double zeta, double par) {
-  if (o1.l  != o2.l ) { return 0.0; }
-  if (o1.j2 != o2.j2) { return 0.0; }
-  if (o1.e2 != o2.e2) { return 0.0; }
+  if (o1.l  != o2.l ) return 0.0;
+  if (o1.j2 != o2.j2) return 0.0;
+  if (o1.e2 != o2.e2) return 0.0;
 
   int PQ;
   double result1, error1, result2, error2;
