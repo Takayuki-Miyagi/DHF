@@ -7,7 +7,7 @@ CXX = g++
 #  -DOPENBLAS_NOUSEOMP=1 removes parallel blocks which take threads away from OPENBLAS
 #                        to be used if OpenBlas was compiled without the USE_OMP flag
 .PHONY: version
-ALL = OrbitsTest TwoBodySpaceTest ModelSpaceTest TwoBodyOperatorTest OperatorTest HFTest
+ALL = OrbitsTest.exe HFTest.exe
 INSTDIR = $(HOME)
 INCLUDE   = -I./armadillo
 FLAGS     = -O3 -march=native -std=c++11 -fopenmp
@@ -71,18 +71,10 @@ boost_src/%.o: boost_src/%.cpp
 %.o: %.cc
 	$(CXX) -c $*.cc -o $@ $(INCLUDE) $(FLAGS)
 
-OrbitsTest: OrbitsTest.o Orbits.o
+OrbitsTest.exe: OrbitsTest.o Orbits.o
 	$(CXX) -o $@ $^ $(INCLUDE) $(FLAGS) $(LIBS)
-TwoBodySpaceTest: TwoBodySpaceTest.o TwoBodySpace.o Orbits.o
-	$(CXX) -o $@ $^ $(INCLUDE) $(FLAGS) $(LIBS)
-ModelSpaceTest: ModelSpaceTest.o ModelSpace.o TwoBodySpace.o Orbits.o
-	$(CXX) -o $@ $^ $(INCLUDE) $(FLAGS) $(LIBS)
-TwoBodyOperatorTest: TwoBodyOperatorTest.o TwoBodyOperator.o ModelSpace.o TwoBodySpace.o Orbits.o
-	$(CXX) -o $@ $^ $(INCLUDE) $(FLAGS) $(LIBS)
-OperatorTest: OperatorTest.o Operator.o TwoBodyOperator.o ModelSpace.o TwoBodySpace.o Orbits.o
-	$(CXX) -o $@ $^ $(INCLUDE) $(FLAGS) $(LIBS)
-HFTest: HFTest.o HartreeFock.o Operator.o TwoBodyOperator.o ModelSpace.o TwoBodySpace.o Orbits.o
+HFTest.exe: HFTest.o HartreeFock.o Operator.o TwoBodyOperator.o ModelSpace.o TwoBodySpace.o Orbits.o
 	$(CXX) -o $@ $^ $(INCLUDE) $(FLAGS) $(LIBS)
 
 clean:
-	rm -f *.o *.so boost_src/*.o
+	rm -f *.o *.so *.exe boost_src/*.o

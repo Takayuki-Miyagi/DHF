@@ -30,7 +30,6 @@ class HartreeFock
 
   public:
     Operator& H;
-    std::map<int, double> holes;
     ModelSpace * modelspace;
     Monopole monopole;
     arma::mat C, rho, F, V, S;
@@ -41,7 +40,7 @@ class HartreeFock
 
     // Constructor
     ~HartreeFock();
-    HartreeFock(Operator&, std::map<int, double>);
+    HartreeFock(Operator&);
 
     void CalcEnergy();
     double UpdateFock(int n_itr = -1);

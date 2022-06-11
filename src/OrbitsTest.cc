@@ -1,3 +1,4 @@
+#include <iostream>
 #include <iomanip>
 #include <armadillo>
 #include "PhysicalConstants.hh"
@@ -5,8 +6,7 @@
 
 arma::mat OrthoNormalize(arma::mat H, arma::mat S)
 {
-  arma::mat L = arma::chol(S,"lower");
-  arma::mat H_orth = arma::inv(L) * H * arma::inv(L).t();
+  arma::mat L = arma::chol(S,"lower"); arma::mat H_orth = arma::inv(L) * H * arma::inv(L).t();
   return H_orth;
 }
 
@@ -31,11 +31,13 @@ int main(int argc, char** argv)
 {
   std::cout << " Orbit test " << std::endl;
   double Z = 1;
-  double zeta = 4;
+  double zeta = 2;
   int wint = 4;
   int wdouble = 12;
-  Orbits orbits = Orbits(4, 0);
-  orbits.PrintOrbits();
+  //Orbits orbits = Orbits(1,0);  
+  //Orbits orbits = Orbits("rel-s4-p2-d1-f1-g1");  
+  Orbits orbits = Orbits("nonrel-s2", "NonRel_Laguerre");  
+  orbits.Print();
   int norbs = orbits.GetNumberOrbits();
 
   arma::mat H = arma::mat(norbs, norbs, arma::fill::zeros);
@@ -51,23 +53,36 @@ int main(int argc, char** argv)
       //  << std::setw(wdouble) << MEOverlap(o1, o2, zeta, Z) << " "
       //  << std::setw(wdouble) << MEKinetic(o1, o2, zeta, Z) << " "
       //  << std::setw(wdouble) << MENuclPot(o1, o2, zeta, Z) << " "
-      //  << std::setw(wdouble) << NormCheck(o1, o2, zeta, Z) << std::endl;
+      //  << std::setw(wdouble) << NormCheck(o1, o2, zeta, Z) << 
+      //  << std::endl;
+      //std::cout << std::setw(wint) << i1 << " "
+      //  << std::setw(wint) << i2 << " "
+      //  << std::setw(wdouble) << MEOverlap(o1, o2, zeta, Z) << " "
+      //  << std::setw(wdouble) << MEKinetic(o1, o2, zeta, Z) << " "
+      //  << std::setw(wdouble) << -Z*MENuclPot(o1, o2, zeta, Z) << " "
+      //  << std::endl;
       double mass_term = 0;
-      if(o1.e2 ==-1) {mass_term = -2*PhysConst::c * PhysConst::c*MEOverlap(o1, o2, zeta, Z);}
-      H(i1,i2) = MEKinetic(o1, o2, zeta, Z) - MENuclPot(o1, o2, zeta, Z) + mass_term;
+      if(o1.e2 ==-1) mass_term = -2*PhysConst::c * PhysConst::c*MEOverlap(o1, o2, zeta, Z);
+      H(i1,i2) = MEKinetic(o1, o2, zeta, Z) - Z*MENuclPot(o1, o2, zeta, Z) + mass_term;
       S(i1,i2) = MEOverlap(o1, o2, zeta, Z);
       H(i2,i1) = H(i1,i2);
       S(i2,i1) = S(i1,i2);
     }
   }
 
+  //std::cout.precision(12);
+  //std::cout.setf(std::ios::scientific);
+
   std::cout << S << std::endl;
 
+  //H.raw_print(std::cout);
   arma::mat H_orth = OrthoNormalize(H, S);
+  //H_orth.raw_print(std::cout);
   arma::vec eig;
   arma::mat vec_orth;
   arma::eig_sym(eig, vec_orth, H_orth);
-  arma::uvec electrons = GetElectronStates(eig, orbits);
-  std::cout << eig(electrons(0)) << std::endl;
+  std::cout << eig << std::endl;
+  //arma::uvec electrons = GetElectronStates(eig, orbits);
+  //std::cout << eig(electrons) << std::endl;
 }
 

@@ -1,4 +1,5 @@
 #include <armadillo>
+#include "Parameters.hh"
 #include "PhysicalConstants.hh"
 #include "Orbits.hh"
 #include "ModelSpace.hh"
@@ -7,21 +8,23 @@
 #include "HartreeFock.hh"
 int main(int argc, char** argv)
 {
+  Parameters parameters(argc,argv);
   std::cout << " HartreeFock test " << std::endl;
-  int ElectronNumber = 2;
-  double Z = 2;
-  double zeta_inv = 4;
-  int wint = 4;
-  int wdouble = 12;
-  Orbits orbits = Orbits(6,0);
-  ModelSpace ms = ModelSpace(ElectronNumber, Z, 1/zeta_inv, orbits);
+
+  std::string orbitals = parameters.s("orbitals");
+  std::string atom = parameters.s("atom");
+  std::string radial_function_type = parameters.s("radial_function_type");
+  double zeta_inv = parameters.d("zeta_inv");
+  Orbits orbits = Orbits(orbitals, radial_function_type); 
+  orbits.Print();
+  ModelSpace ms = ModelSpace(atom, 1/zeta_inv, orbits);
   Operator H = Operator(ms);
 
-  H.SetDiracCoulombHamiltonian(true, true);
+  if(orbits.relativistic) H.SetDiracCoulombHamiltonian(true, true);
+  else H.SetCoulombHamiltonian(true, true);
   H.OrthoNormalize();
-  std::map<int, double> holes;
-  holes[0] = 1.0;
-  HartreeFock HF = HartreeFock(H, holes);
+  //H.Print();
+  HartreeFock HF = HartreeFock(H);
   HF.Solve();
   std::cout << HF.EHF << std::endl;
 }

@@ -23,12 +23,13 @@ class Orbit {
     int lj2k(int l_in, int j2_in) {return floor(-(4 + j2_in*(j2_in+2) - 4*l_in*(l_in+1)-3)/4);};
     std::array<int,2> k2lj(int k);
     void SetRadialFunctionType(std::string new_radial_function_type) {radial_function_type = new_radial_function_type;};
-    void PrintOrbit();
+    void Print();
 
-    double RadialFunction(double x, double zeta, double par, int PQ);
+    double RadialFunction(double x, double zeta, double par, int PQ, bool=false);
     double RadialFunctionD(double x, double zeta, double par, int PQ);
-    double _LSpinor_P_wave_function_rspace(double x, double zeta, double Z);
-    double _LSpinor_Q_wave_function_rspace(double x, double zeta, double Z);
+    double _Laguerre_wave_function(double x, double zeta, bool=false);
+    double _LSpinor_P_wave_function_rspace(double x, double zeta, double Z, bool=false);
+    double _LSpinor_Q_wave_function_rspace(double x, double zeta, double Z, bool=false);
     double _LSpinor_P_wave_function_rspace_dr(double x, double zeta, double Z);
     double _LSpinor_Q_wave_function_rspace_dr(double x, double zeta, double Z);
     std::array<double,3> _get_pars_Lspinor(double zeta, double Z);
@@ -38,18 +39,18 @@ class Orbits : public Orbit {
   public:
     // Member Variables
     std::vector <Orbit> orbits;
-    int emax, lmax, norbs;
-    bool verbose;
+    std::string orbitals;
+    int lmax;
+    bool relativistic;
     std::string radial_function_type;
     std::map<std::array<int,4>, int> nlje_idx;
-    std::vector<char> labels_orbital_angular_momentum;
+    std::vector<std::string> labels_orbital_angular_momentum;
 
     // Constructor
     ~Orbits();
     Orbits();
-    Orbits(int, int, std::string="default");
-    //Orbits(int emax1, int lmax1, std::string radial_function_type1, bool verbose1, bool relativistic1);
-    //Orbits(std::string radial_function_type1="default", bool verbose1=false, bool relativistic1=true);
+    Orbits(int, int, std::string="default", bool=true);
+    Orbits(std::string, std::string="default");
 
     // Class Function Declerations
     void AddOrbit(int, int, int, int);
@@ -62,9 +63,9 @@ class Orbits : public Orbit {
     int GetOrbitIndex(int, int, int);
     int GetOrbitIndex(Orbit& o) {return nlje_idx[{o.n, o.l, o.j2, o.e2}];};
     int GetOrbitIndex(int n, int l, int j2, int e2) {return nlje_idx[{n,l,j2,e2}];};
-    int GetNumberOrbits() {return norbs;};
+    int GetNumberOrbits() {return orbits.size();};
     void SetOrbits(int nmax, int lmax);
-    void PrintOrbits();
+    void Print();
 
 };
 

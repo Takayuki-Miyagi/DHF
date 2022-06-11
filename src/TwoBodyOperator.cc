@@ -207,10 +207,11 @@ double TwoBodyOperator::MECoulomb(Orbit& o1, Orbit& o2, Orbit& o3, Orbit& o4, in
   int Lmin = std::max(std::abs(o1.j2-o3.j2), std::abs(o2.j2-o4.j2))/2;
   int Lmax = std::min(        (o1.j2+o3.j2),         (o2.j2+o4.j2))/2;
   double rmax = 50;
-  int NMesh = 100;
+  int NMesh = 200;
   gsl_integration_fixed_workspace *workspace;
-  const gsl_integration_fixed_type *T = gsl_integration_fixed_legendre;
-  workspace = gsl_integration_fixed_alloc(T, NMesh, 0.0, rmax, 0.0, 0.0);
+  //const gsl_integration_fixed_type *T = gsl_integration_fixed_legendre;
+  const gsl_integration_fixed_type *T = gsl_integration_fixed_laguerre;
+  workspace = gsl_integration_fixed_alloc(T, NMesh, 0.0, 2.0/zeta, 0.0, 0.0);
   double r = 0.0;
   for (int L=Lmin; L<=Lmax; L++) {
     if ( (o1.l+o3.l+L)%2 == 1 ) continue;
@@ -228,10 +229,10 @@ double TwoBodyOperator::MECoulomb(Orbit& o1, Orbit& o2, Orbit& o3, Orbit& o4, in
         double wx = workspace->weights[i];
         double y = workspace->x[j];
         double wy = workspace->weights[j];
-        Integral += wx * wy * o1.RadialFunction(x, zeta, Z, o1.e2) *
-          o2.RadialFunction(y, zeta, Z, o2.e2) *
-          o3.RadialFunction(x, zeta, Z, o3.e2) *
-          o4.RadialFunction(y, zeta, Z, o4.e2) *
+        Integral += wx * wy * o1.RadialFunction(x, zeta, Z, o1.e2, true) *
+          o2.RadialFunction(y, zeta, Z, o2.e2, true) *
+          o3.RadialFunction(x, zeta, Z, o3.e2, true) *
+          o4.RadialFunction(y, zeta, Z, o4.e2, true) *
           pow( std::min(x,y), L) / pow( std::max(x,y), (L+1) ) * o1.e2 * o2.e2;
       }
     }
