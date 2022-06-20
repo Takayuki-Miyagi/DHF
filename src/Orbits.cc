@@ -92,8 +92,10 @@ double Orbit::_LSpinor_P_wave_function_rspace(double x, double zeta, double Z, b
   double N = pars[1];
   double Norm = pars[2];
   if (Norm == 0.0) return 0.0;
-  double T = gsl_sf_laguerre_n(n+l, 2 * gam, eta) * (N - kappa) / (n + l + 2 * gam);
-  if (n+l > 0) T -= gsl_sf_laguerre_n(n + l - 1, 2 * gam, eta); 
+  int nr = n;
+  if(kappa>0) nr += 1;
+  double T = gsl_sf_laguerre_n(nr, 2 * gam, eta) * (N - kappa) / (nr + 2 * gam);
+  if (nr > 0) T -= gsl_sf_laguerre_n(nr - 1, 2 * gam, eta); 
   if(exp_weight) return T * pow(eta, gam) * Norm;
   return T * pow(eta, gam) * exp(-0.5 * eta) * Norm;
 }
@@ -105,8 +107,10 @@ double Orbit::_LSpinor_Q_wave_function_rspace(double x, double zeta, double Z, b
   double N = pars[1];
   double Norm = pars[2];
   if (Norm == 0.0) return 0.0; 
-  double T = -gsl_sf_laguerre_n(n+l, 2 * gam, eta) * (N - kappa) / (n+l + 2 * gam);
-  if (n+l > 0) T -= gsl_sf_laguerre_n(n+l - 1, 2 * gam, eta); 
+  int nr = n;
+  if(kappa>0) nr += 1;
+  double T = -gsl_sf_laguerre_n(nr, 2 * gam, eta) * (N - kappa) / (nr + 2 * gam);
+  if (nr > 0) T -= gsl_sf_laguerre_n(nr - 1, 2 * gam, eta); 
   if(exp_weight) return T * pow(eta, gam) * Norm;
   return T * pow(eta, gam) * exp(-0.5 * eta) * Norm;
 }
@@ -118,12 +122,14 @@ double Orbit::_LSpinor_P_wave_function_rspace_dr(double x, double zeta, double Z
   double N = pars[1];
   double Norm = pars[2];
   if (Norm == 0.0) return 0.0; 
+  int nr = n;
+  if(kappa>0) nr += 1;
   double T1 = _LSpinor_P_wave_function_rspace(x, zeta, gam) * ((gam / eta) - 0.5);
   double T2;
-  if (n+l > 0) {
-    T2 = -gsl_sf_laguerre_n(n + l - 1, 2 * gam + 1, eta) * (N - kappa) / (n + l + 2 * gam);
-    if (n+l > 1) {
-      T2 += gsl_sf_laguerre_n(n + l - 2, 2 * gam + 1, eta);
+  if (nr > 0) {
+    T2 = -gsl_sf_laguerre_n(nr - 1, 2 * gam + 1, eta) * (N - kappa) / (nr + 2 * gam);
+    if (nr > 1) {
+      T2 += gsl_sf_laguerre_n(nr - 2, 2 * gam + 1, eta);
     }
   } else {
     T2 = 0.0;
@@ -138,12 +144,14 @@ double Orbit::_LSpinor_Q_wave_function_rspace_dr(double x, double zeta, double Z
   double N = pars[1];
   double Norm = pars[2];
   if (Norm == 0.0) return 0.0;
+  int nr = n;
+  if(kappa>0) nr += 1;
   double T1 = _LSpinor_Q_wave_function_rspace(x, zeta, gam) * ((gam / eta) - 0.5);
   double T2;
-  if (n+l > 0) {
-    T2 = gsl_sf_laguerre_n(n + l - 1, 2 * gam + 1, eta) * (N - kappa) / (n + l + 2 * gam);
-    if (n+l > 1) {
-      T2 += gsl_sf_laguerre_n(n + l - 2, 2 * gam + 1, eta);
+  if (nr > 0) {
+    T2 = gsl_sf_laguerre_n(nr - 1, 2 * gam + 1, eta) * (N - kappa) / (nr + 2 * gam);
+    if (nr > 1) {
+      T2 += gsl_sf_laguerre_n(nr - 2, 2 * gam + 1, eta);
     }
   } else {
     T2 = 0.0;
@@ -152,14 +160,17 @@ double Orbit::_LSpinor_Q_wave_function_rspace_dr(double x, double zeta, double Z
 }
 
 std::array<double,3> Orbit::_get_pars_lspinor(double zeta, double Z) {
+  int nr = n;
+  if(kappa>0) nr += 1;
   double gam = sqrt(pow(kappa, 2) - pow(Z, 2) / pow(PhysConst::c, 2));
-  double N = sqrt(pow(n+l, 2) + 2.0 * (n+l) * gam + pow(kappa, 2));
+  double N = sqrt(pow(nr, 2) + 2.0 * nr * gam + pow(kappa, 2));
   double Norm;
   if (N - kappa == 0) {
     Norm = 0.0;
+    std::cout << "Warnning: wave function norm diverges!" << std::endl;
   }
   else {
-    Norm = sqrt((tgamma(n + l + 1) * (2 * gam + n + l)) / (2 * N * (N - kappa) * tgamma(2 * gam + n + l) * zeta));
+    Norm = sqrt((tgamma(nr + 1) * (2 * gam + nr)) / (2 * N * (N - kappa) * tgamma(2 * gam + nr) * zeta));
   }
   return { gam, N, Norm };
 }
