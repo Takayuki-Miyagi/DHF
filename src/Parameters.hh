@@ -46,7 +46,7 @@ class Parameters
 std::map<std::string,std::string> Parameters::string_par = {
   {"orbitals", "rel-s2"},        // Orbitals constructing the model space. nonrel-s(num)-p(num)- ... is also possible
   {"atom","He"},        // Target atom 
-  {"radial_function_type","default"}, 
+  {"radial_function_type","LSpinor"}, 
 };
 
 
@@ -55,6 +55,7 @@ std::map<std::string,double> Parameters::double_par = {
 };
 
 std::map<std::string,int> Parameters::int_par = {
+  {"NMesh",100}
 };
 
 std::map<std::string,std::vector<std::string>> Parameters::vec_par = {

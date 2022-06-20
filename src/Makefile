@@ -71,7 +71,7 @@ boost_src/%.o: boost_src/%.cpp
 %.o: %.cc
 	$(CXX) -c $*.cc -o $@ $(INCLUDE) $(FLAGS)
 
-OrbitsTest.exe: OrbitsTest.o Orbits.o
+OrbitsTest.exe: OrbitsTest.o Orbits.o TwoBodySpace.o ModelSpace.o Operator.o TwoBodyOperator.o
 	$(CXX) -o $@ $^ $(INCLUDE) $(FLAGS) $(LIBS)
 HFTest.exe: HFTest.o HartreeFock.o Operator.o TwoBodyOperator.o ModelSpace.o TwoBodySpace.o Orbits.o
 	$(CXX) -o $@ $^ $(INCLUDE) $(FLAGS) $(LIBS)

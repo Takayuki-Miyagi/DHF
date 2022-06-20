@@ -18,30 +18,30 @@ Orbit::~Orbit()
 {}
 
 Orbit::Orbit()
-  : n(-1), l(-1), j2(-1), k(0), e2(-100), radial_function_type("default")
+  : n(-1), l(-1), j2(-1), kappa(0), ls(-100), radial_function_type("default")
 {}
 
-Orbit::Orbit(int n, int k, int e2)
-  : n(n), k(k), e2(e2), radial_function_type("default")
+Orbit::Orbit(int n, int kappa, int ls, int idx)
+  : n(n), kappa(kappa), ls(ls), idx(idx), radial_function_type("default")
 {
-  std::array<int,2> lj = k2lj(k);
+  std::array<int,2> lj = kappa2lj(kappa);
   l = lj[0];
   j2 = lj[1];
 }
 
-Orbit::Orbit(int n, int l, int j2, int e2)
-  : n(n), l(l), j2(j2), e2(e2), radial_function_type("default")
+Orbit::Orbit(int n, int l, int j2, int ls, int idx)
+  : n(n), l(l), j2(j2), ls(ls), idx(idx), radial_function_type("default")
 {
-  k = lj2k(l,j2);
+  kappa = lj2kappa(l,j2);
 }
 
-std::array<int,2> Orbit::k2lj(int k)
+std::array<int,2> Orbit::kappa2lj(int kappa)
 {
-  if (k > 0) {
-    return { k, 2 * k - 1 };
+  if (kappa > 0) {
+    return { kappa, 2 * kappa - 1 };
   }
-  else if (k < 0) {
-    return { -k - 1, -2 * k - 1 };
+  else if (kappa < 0) {
+    return { -kappa - 1, -2 * kappa - 1 };
   }
   else {return {0,0};}
 }
@@ -49,17 +49,20 @@ std::array<int,2> Orbit::k2lj(int k)
 void Orbit::Print()
 {
   int width = 6;
-  std::cout << " n =" << std::setw(width) << n << ", l =" << std::setw(width) << l << 
+  std::cout << 
+    " index =" << std::setw(width) << idx << 
+    ", n =" << std::setw(width) << n << 
+    ", l =" << std::setw(width) << l << 
     ", j2 =" << std::setw(width) << j2 << 
-    ", kappa =" << std::setw(width) << k << 
-    ", e2 =" << std::setw(width) << e2 << 
+    ", kappa =" << std::setw(width) << kappa << 
+    ", L/S =" << std::setw(width) << ls << 
     ", radial wf type: " << radial_function_type << std::endl;
 }
 
-double Orbit::RadialFunction(double x, double zeta, double par, int PQ, bool exp_weight) {
-  if (radial_function_type == "default") {
-    if(PQ == 1) return _LSpinor_P_wave_function_rspace(x, zeta, par, exp_weight); 
-    if(PQ ==-1) return _LSpinor_Q_wave_function_rspace(x, zeta, par, exp_weight); 
+double Orbit::RadialFunction(double x, double zeta, double par, bool exp_weight) {
+  if (radial_function_type == "LSpinor") {
+    if(ls == 1) return _LSpinor_P_wave_function_rspace(x, zeta, par, exp_weight); 
+    if(ls ==-1) return _LSpinor_Q_wave_function_rspace(x, zeta, par, exp_weight); 
   }
   else if (radial_function_type=="NonRel_Laguerre"){
     return _Laguerre_wave_function(x, zeta, exp_weight);
@@ -67,10 +70,10 @@ double Orbit::RadialFunction(double x, double zeta, double par, int PQ, bool exp
   return 0;
 }
 
-double Orbit::RadialFunctionD(double x, double zeta, double par, int PQ) {
-  if (radial_function_type == "default") {
-    if (PQ ==  1) { return _LSpinor_P_wave_function_rspace_dr(x, zeta, par); }
-    if (PQ == -1) { return _LSpinor_Q_wave_function_rspace_dr(x, zeta, par); }
+double Orbit::RadialFunctionD(double x, double zeta, double par) {
+  if (radial_function_type == "LSpinor") {
+    if (ls ==  1) { return _LSpinor_P_wave_function_rspace_dr(x, zeta, par); }
+    if (ls == -1) { return _LSpinor_Q_wave_function_rspace_dr(x, zeta, par); }
   }
   return 0;
 }
@@ -84,11 +87,12 @@ double Orbit::_Laguerre_wave_function(double x, double zeta, bool exp_weight) {
 
 double Orbit::_LSpinor_P_wave_function_rspace(double x, double zeta, double Z, bool exp_weight) {
   double eta = 2.0 * x / zeta;
-  double gam = _get_pars_Lspinor(zeta, Z)[0];
-  double N = _get_pars_Lspinor(zeta, Z)[1];
-  double Norm = _get_pars_Lspinor(zeta, Z)[2];
+  std::array<double,3> pars = _get_pars_lspinor(zeta, Z);
+  double gam = pars[0];
+  double N = pars[1];
+  double Norm = pars[2];
   if (Norm == 0.0) return 0.0;
-  double T = gsl_sf_laguerre_n(n+l, 2 * gam, eta) * (N - k) / (n + l + 2 * gam);
+  double T = gsl_sf_laguerre_n(n+l, 2 * gam, eta) * (N - kappa) / (n + l + 2 * gam);
   if (n+l > 0) T -= gsl_sf_laguerre_n(n + l - 1, 2 * gam, eta); 
   if(exp_weight) return T * pow(eta, gam) * Norm;
   return T * pow(eta, gam) * exp(-0.5 * eta) * Norm;
@@ -96,11 +100,12 @@ double Orbit::_LSpinor_P_wave_function_rspace(double x, double zeta, double Z, b
 
 double Orbit::_LSpinor_Q_wave_function_rspace(double x, double zeta, double Z, bool exp_weight) {
   double eta = 2.0 * x / zeta;
-  double gam = _get_pars_Lspinor(zeta, Z)[0];
-  double N = _get_pars_Lspinor(zeta, Z)[1];
-  double Norm = _get_pars_Lspinor(zeta, Z)[2];
+  std::array<double,3> pars = _get_pars_lspinor(zeta, Z);
+  double gam = pars[0];
+  double N = pars[1];
+  double Norm = pars[2];
   if (Norm == 0.0) return 0.0; 
-  double T = -gsl_sf_laguerre_n(n+l, 2 * gam, eta) * (N - k) / (n+l + 2 * gam);
+  double T = -gsl_sf_laguerre_n(n+l, 2 * gam, eta) * (N - kappa) / (n+l + 2 * gam);
   if (n+l > 0) T -= gsl_sf_laguerre_n(n+l - 1, 2 * gam, eta); 
   if(exp_weight) return T * pow(eta, gam) * Norm;
   return T * pow(eta, gam) * exp(-0.5 * eta) * Norm;
@@ -108,14 +113,15 @@ double Orbit::_LSpinor_Q_wave_function_rspace(double x, double zeta, double Z, b
 
 double Orbit::_LSpinor_P_wave_function_rspace_dr(double x, double zeta, double Z) {
   double eta = 2.0 * x / zeta;
-  double gam = _get_pars_Lspinor(zeta, Z)[0];
-  double N = _get_pars_Lspinor(zeta, Z)[1];
-  double Norm = _get_pars_Lspinor(zeta, Z)[2];
+  std::array<double,3> pars = _get_pars_lspinor(zeta, Z);
+  double gam = pars[0];
+  double N = pars[1];
+  double Norm = pars[2];
   if (Norm == 0.0) return 0.0; 
   double T1 = _LSpinor_P_wave_function_rspace(x, zeta, gam) * ((gam / eta) - 0.5);
   double T2;
   if (n+l > 0) {
-    T2 = -gsl_sf_laguerre_n(n + l - 1, 2 * gam + 1, eta) * (N - k) / (n + l + 2 * gam);
+    T2 = -gsl_sf_laguerre_n(n + l - 1, 2 * gam + 1, eta) * (N - kappa) / (n + l + 2 * gam);
     if (n+l > 1) {
       T2 += gsl_sf_laguerre_n(n + l - 2, 2 * gam + 1, eta);
     }
@@ -127,14 +133,15 @@ double Orbit::_LSpinor_P_wave_function_rspace_dr(double x, double zeta, double Z
 
 double Orbit::_LSpinor_Q_wave_function_rspace_dr(double x, double zeta, double Z) {
   double eta = 2.0 * x / zeta;
-  double gam = _get_pars_Lspinor(zeta, Z)[0];
-  double N = _get_pars_Lspinor(zeta, Z)[1];
-  double Norm = _get_pars_Lspinor(zeta, Z)[2];
+  std::array<double,3> pars = _get_pars_lspinor(zeta, Z);
+  double gam = pars[0];
+  double N = pars[1];
+  double Norm = pars[2];
   if (Norm == 0.0) return 0.0;
   double T1 = _LSpinor_Q_wave_function_rspace(x, zeta, gam) * ((gam / eta) - 0.5);
   double T2;
   if (n+l > 0) {
-    T2 = gsl_sf_laguerre_n(n + l - 1, 2 * gam + 1, eta) * (N - k) / (n + l + 2 * gam);
+    T2 = gsl_sf_laguerre_n(n + l - 1, 2 * gam + 1, eta) * (N - kappa) / (n + l + 2 * gam);
     if (n+l > 1) {
       T2 += gsl_sf_laguerre_n(n + l - 2, 2 * gam + 1, eta);
     }
@@ -144,92 +151,18 @@ double Orbit::_LSpinor_Q_wave_function_rspace_dr(double x, double zeta, double Z
   return 2.0 / zeta * (T1 + Norm * T2 * pow(eta, gam) * exp(-0.5 * eta));
 }
 
-std::array<double,3> Orbit::_get_pars_Lspinor(double zeta, double Z) {
-  double gam = sqrt(pow(k, 2) - pow(Z, 2) / pow(PhysConst::c, 2));
-  double N = sqrt(pow(n+l, 2) + 2.0 * (n+l) * gam + pow(k, 2));
+std::array<double,3> Orbit::_get_pars_lspinor(double zeta, double Z) {
+  double gam = sqrt(pow(kappa, 2) - pow(Z, 2) / pow(PhysConst::c, 2));
+  double N = sqrt(pow(n+l, 2) + 2.0 * (n+l) * gam + pow(kappa, 2));
   double Norm;
-  if (N - k == 0) {
+  if (N - kappa == 0) {
     Norm = 0.0;
   }
   else {
-    Norm = sqrt((tgamma(n + l + 1) * (2 * gam + n + l)) / (2 * N * (N - k) * tgamma(2 * gam + n + l) * zeta));
+    Norm = sqrt((tgamma(n + l + 1) * (2 * gam + n + l)) / (2 * N * (N - kappa) * tgamma(2 * gam + n + l) * zeta));
   }
   return { gam, N, Norm };
 }
-
-//double Orbit::_LSpinor_P_wave_function_rspace(double x, double zeta, double Z) {
-//  double eta = 2.0 * x / zeta;
-//  double gam = _get_pars_Lspinor(zeta, Z)[0];
-//  double N = _get_pars_Lspinor(zeta, Z)[1];
-//  double Norm = _get_pars_Lspinor(zeta, Z)[2];
-//  if (Norm == 0.0) { return 0.0; }
-//  double T = gsl_sf_laguerre_n(n, 2 * gam, eta) * (N - k) / (n + 2 * gam);
-//  if (n > 0) { T -= gsl_sf_laguerre_n(n - 1, 2 * gam, eta); }
-//  return T * pow(eta, gam) * exp(-0.5 * eta) * Norm;
-//}
-//
-//double Orbit::_LSpinor_Q_wave_function_rspace(double x, double zeta, double Z) {
-//  double eta = 2.0 * x / zeta;
-//  double gam = _get_pars_Lspinor(zeta, Z)[0];
-//  double N = _get_pars_Lspinor(zeta, Z)[1];
-//  double Norm = _get_pars_Lspinor(zeta, Z)[2];
-//  if (Norm == 0.0) { return 0.0; }
-//  double T = -gsl_sf_laguerre_n(n, 2 * gam, eta) * (N - k) / (n + 2 * gam);
-//  if (n > 0) { T -= gsl_sf_laguerre_n(n - 1, 2 * gam, eta); }
-//  return T * pow(eta, gam) * exp(-0.5 * eta) * Norm;
-//}
-//
-//double Orbit::_LSpinor_P_wave_function_rspace_dr(double x, double zeta, double Z) {
-//  double eta = 2.0 * x / zeta;
-//  double gam = _get_pars_Lspinor(zeta, Z)[0];
-//  double N = _get_pars_Lspinor(zeta, Z)[1];
-//  double Norm = _get_pars_Lspinor(zeta, Z)[2];
-//  if (Norm == 0.0) { return 0.0; }
-//  double T1 = _LSpinor_P_wave_function_rspace(x, zeta, gam) * ((gam / eta) - 0.5);
-//  double T2;
-//  if (n > 0) {
-//    T2 = -gsl_sf_laguerre_n(n - 1, 2 * gam + 1, eta) * (N - k) / (n + 2 * gam);
-//    if (n > 1) {
-//      T2 += gsl_sf_laguerre_n(n - 2, 2 * gam + 1, eta);
-//    }
-//  } else {
-//    T2 = 0.0;
-//  }
-//  return 2.0 / zeta * (T1 + Norm * T2 * pow(eta, gam) * exp(-0.5 * eta));
-//}
-//
-//double Orbit::_LSpinor_Q_wave_function_rspace_dr(double x, double zeta, double Z) {
-//  double eta = 2.0 * x / zeta;
-//  double gam = _get_pars_Lspinor(zeta, Z)[0];
-//  double N = _get_pars_Lspinor(zeta, Z)[1];
-//  double Norm = _get_pars_Lspinor(zeta, Z)[2];
-//  if (Norm == 0.0) { return 0.0; }
-//  double T1 = _LSpinor_Q_wave_function_rspace(x, zeta, gam) * ((gam / eta) - 0.5);
-//  double T2;
-//  if (n > 0) {
-//    T2 = gsl_sf_laguerre_n(n - 1, 2 * gam + 1, eta) * (N - k) / (n + 2 * gam);
-//    if (n > 1) {
-//      T2 += gsl_sf_laguerre_n(n - 2, 2 * gam + 1, eta);
-//    }
-//  } else {
-//    T2 = 0.0;
-//  }
-//  return 2.0 / zeta * (T1 + Norm * T2 * pow(eta, gam) * exp(-0.5 * eta));
-//}
-//
-//std::array<double,3> Orbit::_get_pars_Lspinor(double zeta, double Z) {
-//  double gam = sqrt(pow(k, 2) - pow(Z, 2) / pow(PhysConst::c, 2));
-//  double N = sqrt(pow(n, 2) + 2.0 * n * gam + pow(k, 2));
-//  double Norm;
-//  if (N - k == 0) {
-//    Norm = 0.0;
-//  }
-//  else {
-//    Norm = sqrt((tgamma(n + 1) * (2 * gam + n)) / (2 * N * (N - k) * tgamma(2 * gam + n) * zeta));
-//  }
-//  return { gam, N, Norm };
-//}
-
 
 
 //
@@ -247,13 +180,13 @@ Orbits::Orbits(int nmax, int l, std::string radial_function_type, bool relativis
   : lmax(-1), radial_function_type(radial_function_type), relativistic(relativistic),
   labels_orbital_angular_momentum({ "s", "p", "d", "f", "g", "h", "i", "k", "l", "m", "n", "o", "q", "r", "t", "u", "v", "w", "x", "y", "z" })
 {
-  std::vector<int> klist = {1,-1};
-  if(not relativistic) klist = {1};
+  std::vector<int> lslist = {1,-1};
+  if(not relativistic) lslist = {1};
   for ( int n = 0; n < nmax+1; n++){
     for (int j : {2*l-1, 2*l+1} ) {
       if ( j<0 ){ continue; }
-      for ( int e : klist ) {
-        AddOrbit(n, l, j, e);
+      for ( int ls : lslist ) {
+        AddOrbit(n, l, j, ls);
       }
     }
   }
@@ -291,17 +224,27 @@ Orbits::Orbits(std::string orbitals, std::string radial_function_type)
   }
 }
 
-void Orbits::AddOrbit(int n, int l, int j, int e){
-  std::array<int,4> nlje = {n,l,j,e};
-  //for (int i : nlje ){
-  //  if (verbose==true) { std::cout << "The orbit " << nlje[0] << nlje[1] << nlje[2] << nlje[3] << " is already there." << std::endl; }
-  //}
+void Orbits::AddOrbit(int n, int l, int j, int ls){
+  std::array<int,4> nlje = {n,l,j,ls};
+  auto it = nlje_idx.find(nlje);
+  if(it != nlje_idx.end()){
+    std::cout << "The orbit " << nlje[0] << nlje[1] << nlje[2] << nlje[3] << " is already there." << std::endl;
+    return;
+  }
   int idx = orbits.size();
   nlje_idx[nlje] = idx;
-  Orbit orb = Orbit(nlje[0], nlje[1], nlje[2], nlje[3]);
+  Orbit orb = Orbit(nlje[0], nlje[1], nlje[2], nlje[3], idx);
   orb.SetRadialFunctionType(radial_function_type);
   orbits.push_back(orb);
   lmax = std::max(lmax, nlje[1]);
+  nmax = std::max(lmax, nlje[0]);
+
+  KappaMin = 100;
+  KappaMax =-100;
+  for (Orbit o : orbits){
+    KappaMin = std::min(KappaMin, o.kappa);
+    KappaMax = std::max(KappaMax, o.kappa);
+  }
 }
 
 void Orbits::AddOrbit(std::string value) {
@@ -333,7 +276,7 @@ void Orbits::AddOrbit(std::string value) {
 }
 
 void Orbits::AddOrbits(Orbits orbits){
-  for (auto o : orbits.orbits) {AddOrbit(o.n, o.l, o.j2, o.e2);}
+  for (auto o : orbits.orbits) {AddOrbit(o.n, o.l, o.j2, o.ls);}
 }
 
 void Orbits::AddOrbits(std::vector <std::array<int,4>> nlje_list){
@@ -352,7 +295,7 @@ void Orbits::Print()
   }
 }
 
-int Orbits::GetOrbitIndex(int n, int k, int e2)
+int Orbits::GetOrbitIndex(int n, int k, int ls)
 {
   int l = 0;
   int j2 = 0;
@@ -364,8 +307,21 @@ int Orbits::GetOrbitIndex(int n, int k, int e2)
     l = -k-1;
     j2 = -2*k-1;
   }
-  return GetOrbitIndex(n, l, j2, e2);
+  return GetOrbitIndex(n, l, j2, ls);
 }
+
+int Orbits::GetOrbitIndex(int n, int l, int j2, int ls)
+{
+  auto it = nlje_idx.find({n,l,j2,ls});
+  if(it != nlje_idx.end()) {
+    return it->second;
+  }
+  else{
+    std::cout << "Orbit index is not found!" << std::endl;
+    return -1;
+  }
+}
+
 
 //size_t limit = 1000;
 //double epsabs = 1.e-12;
@@ -383,8 +339,8 @@ double MEOverlap(Orbit& o1, Orbit& o2, double zeta, double Z) {
 
   if(o1.l != o2.l) return 0;
   if(o1.j2 != o2.j2) return 0;
-  if (o1.e2 == 1 && o2.e2 == 1) {
-    auto lambda = [&](double x) { return (o1.RadialFunction(x, zeta, Z, o1.e2) * o2.RadialFunction(x, zeta, Z, o2.e2)); };
+  if (o1.ls == 1 && o2.ls == 1) {
+    auto lambda = [&](double x) { return (o1.RadialFunction(x, zeta, Z) * o2.RadialFunction(x, zeta, Z)); };
     gsl_function_pp<decltype(lambda)> Fp(lambda);
     gsl_function* F = static_cast<gsl_function*>(&Fp);
     gsl_integration_qagiu(F, 0, epsabs, epsrel, limit, w, &result, &error);
@@ -392,8 +348,8 @@ double MEOverlap(Orbit& o1, Orbit& o2, double zeta, double Z) {
     //std::cout << result << " " << error << std::endl;
     return result;
 
-  } else if ((o1.e2 == -1 && o2.e2 == -1)){
-    auto lambda = [&](double x) {return (o1.RadialFunction(x, zeta, Z, o1.e2) * o2.RadialFunction(x, zeta, Z, o2.e2)); };
+  } else if ((o1.ls == -1 && o2.ls == -1)){
+    auto lambda = [&](double x) {return (o1.RadialFunction(x, zeta, Z) * o2.RadialFunction(x, zeta, Z)); };
     gsl_function_pp<decltype(lambda)> Fp(lambda);
     gsl_function* F = static_cast<gsl_function*>(&Fp);
     gsl_integration_qagiu(F, 0, epsabs, epsrel, limit, w, &result, &error);
@@ -411,18 +367,18 @@ double MENuclPot(Orbit& o1, Orbit& o2, double zeta, double Z) {
 
   if(o1.l != o2.l) return 0;
   if(o1.j2 != o2.j2) return 0;
-  if (o1.e2 == 1 && o2.e2 == 1) {
+  if (o1.ls == 1 && o2.ls == 1) {
 
-    auto lambda = [&](double x) { return (o1.RadialFunction(x, zeta, Z, o1.e2) * o2.RadialFunction(x, zeta, Z, o2.e2) / x); };
+    auto lambda = [&](double x) { return (o1.RadialFunction(x, zeta, Z) * o2.RadialFunction(x, zeta, Z) / x); };
     gsl_function_pp<decltype(lambda)> Fp(lambda);
     gsl_function* F = static_cast<gsl_function*>(&Fp);
     gsl_integration_qagiu(F, 0, epsabs, epsrel, limit, w, &result, &error);
     gsl_integration_workspace_free(w);
     //std::cout << result << " " << error << std::endl;
     return result;
-  } else if (o1.e2 == -1 && o2.e2 == -1) {
+  } else if (o1.ls == -1 && o2.ls == -1) {
 
-    auto lambda = [&](double x) { return (o1.RadialFunction(x, zeta, Z, o1.e2) * o2.RadialFunction(x, zeta, Z, o2.e2) / x); };
+    auto lambda = [&](double x) { return (o1.RadialFunction(x, zeta, Z) * o2.RadialFunction(x, zeta, Z) / x); };
     gsl_function_pp<decltype(lambda)> Fp(lambda);
     gsl_function* F = static_cast<gsl_function*>(&Fp);
     gsl_integration_qagiu(F, 0, epsabs, epsrel, limit, w, &result, &error);
@@ -449,8 +405,8 @@ double MEKinetic(Orbit& o1, Orbit& o2, double zeta, double Z) {
       sqrt(tgamma(o1.n+1)*tgamma(o2.n+2*o1.l+3) / (tgamma(o2.n+1)*tgamma(o1.n+2*o1.l+3)))/zeta/zeta;
   }
 
-  if (o1.e2 == 1 && o2.e2 == -1) {
-    auto lambda = [&](double x) { return (-o1.RadialFunction(x, zeta, Z, o1.e2) * (o2.RadialFunctionD(x, zeta, Z, o2.e2) - o2.k * o2.RadialFunction(x, zeta, Z, o2.e2) / x)); };
+  if (o1.ls == 1 && o2.ls == -1) {
+    auto lambda = [&](double x) { return (-o1.RadialFunction(x, zeta, Z) * (o2.RadialFunctionD(x, zeta, Z) - o2.kappa * o2.RadialFunction(x, zeta, Z) / x)); };
     gsl_function_pp<decltype(lambda)> Fp(lambda);
     gsl_function* F = static_cast<gsl_function*>(&Fp);
     gsl_integration_qagiu(F, 0, epsabs, epsrel, limit, w, &result, &error);
@@ -458,8 +414,8 @@ double MEKinetic(Orbit& o1, Orbit& o2, double zeta, double Z) {
     //std::cout << result << " " << error << std::endl;
     return result * PhysConst::c;
 
-  } else if (o1.e2 == -1 && o2.e2 == 1) {
-    auto lambda = [&](double x) { return (o1.RadialFunction(x, zeta, Z, o1.e2) * (o2.RadialFunctionD(x, zeta, Z, o2.e2) + o2.k * o2.RadialFunction(x, zeta, Z, o2.e2) / x)); };
+  } else if (o1.ls == -1 && o2.ls == 1) {
+    auto lambda = [&](double x) { return (o1.RadialFunction(x, zeta, Z) * (o2.RadialFunctionD(x, zeta, Z) + o2.kappa * o2.RadialFunction(x, zeta, Z) / x)); };
     gsl_function_pp<decltype(lambda)> Fp(lambda);
     gsl_function* F = static_cast<gsl_function*>(&Fp);
     gsl_integration_qagiu(F, 0, epsabs, epsrel, limit, w, &result, &error);
@@ -467,30 +423,6 @@ double MEKinetic(Orbit& o1, Orbit& o2, double zeta, double Z) {
     //std::cout << result << " " << error << std::endl;
     return result * PhysConst::c;
 
-  } else { return 0.0; }
-}
-
-double NormCheck(Orbit& o1, Orbit& o2, double zeta, double par) {
-  if (o1.l  != o2.l ) return 0.0;
-  if (o1.j2 != o2.j2) return 0.0;
-  if (o1.e2 != o2.e2) return 0.0;
-
-  int PQ;
-  double result1, error1, result2, error2;
-  gsl_integration_workspace* w = gsl_integration_workspace_alloc(limit);
-  gsl_integration_workspace* m = gsl_integration_workspace_alloc(limit);
-  auto lambda1 = [&](double x) { return (o1.RadialFunction(x, zeta, par, o1.e2) * o2.RadialFunction(x, zeta, par, o2.e2)); };
-  gsl_function_pp<decltype(lambda1)> Fp(lambda1);
-  gsl_function* F = static_cast<gsl_function*>(&Fp);
-  gsl_integration_qagiu(F, 0, epsabs, epsrel, limit, w, &result1, &error1);
-  gsl_integration_workspace_free(w);
-
-  auto lambda2 = [&](double x) { return (o1.RadialFunction(x,zeta,par,-o1.e2) * o2.RadialFunction(x,zeta,par,-o2.e2)); };
-  gsl_function_pp<decltype(lambda2)> Xp(lambda2);
-  gsl_function* X = static_cast<gsl_function*>(&Xp);
-  gsl_integration_qagiu(F, 0, epsabs, epsrel, limit, w, &result2, &error2);
-  gsl_integration_workspace_free(m);
-
-  return result1+result2;
+  } else return 0.0;
 }
 

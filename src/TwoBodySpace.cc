@@ -14,7 +14,7 @@ TwoBodyChannel::TwoBodyChannel(int J, int Prty, int Tz, Orbits& orbs)
     for (int iq=ip; iq<norbs; iq++){
       Orbit& op = orbits->GetOrbit(ip);
       Orbit& oq = orbits->GetOrbit(iq);
-      if(op.e2 + oq.e2 != 2*Tz) continue;
+      if(op.ls + oq.ls != 2*Tz) continue;
       if(pow((-1), (op.l+oq.l)) != Prty) continue;
       if(op.j2 + oq.j2 < 2*J) continue;
       if(std::abs(op.j2 - oq.j2) > 2*J) continue;
@@ -48,11 +48,11 @@ void TwoBodyChannel::PrintChannel()
       << "np =" << std::setw(wint) << op.n
       << ", lp =" << std::setw(wint) << op.l
       << ", j2p =" << std::setw(wint) << op.j2
-      << ", e2p =" << std::setw(wint) << op.e2 << " | "
+      << ", lsp =" << std::setw(wint) << op.ls << " | "
       << "nq =" << std::setw(wint) << oq.n
       << ", lq =" << std::setw(wint) << oq.l
       << ", j2q =" << std::setw(wint) << oq.j2
-      << ", e2q =" << std::setw(wint) << oq.e2 << std::endl;
+      << ", lsq =" << std::setw(wint) << oq.ls << std::endl;
   }
 }
 

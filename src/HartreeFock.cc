@@ -23,13 +23,13 @@ Monopole::Monopole(Operator& H)
     Orbit& o1 = orbits.GetOrbit(i1);
     for (int i3=0; i3<norbs; i3++) {
       Orbit& o3 = orbits.GetOrbit(i3);
-      if (o1.k != o3.k) continue;
+      if (o1.kappa != o3.kappa) continue;
       for (int i2=0; i2<norbs; i2++) {
         for (int i4=0; i4<norbs; i4++) {
           Orbit& o2 = orbits.GetOrbit(i2);
           Orbit& o4 = orbits.GetOrbit(i4);
-          if (o2.k != o4.k) continue;
-          if (o1.e2 + o2.e2 != o3.e2 + o4.e2) continue;
+          if (o2.kappa != o4.kappa) continue;
+          if (o1.ls + o2.ls != o3.ls + o4.ls) continue;
           idx_to_ijkl.push_back({i1,i2,i3,i4});
           double norm = 1.0;
           if (i1==i2) norm *= sqrt(2);

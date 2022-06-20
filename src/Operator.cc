@@ -77,7 +77,7 @@ void Operator::SetOneBodyHamiltonian()
     for (int i2=i1; i2<norbs; i2++){
       Orbit& o1 = orbits.GetOrbit(i1);
       Orbit& o2 = orbits.GetOrbit(i2);
-      if(o1.k != o2.k) continue;
+      if(o1.kappa != o2.kappa) continue;
       OneBody(i1,i2) = MEKinetic(o1, o2, zeta, Z) - Z * MENuclPot(o1, o2, zeta, Z);
       OneBody(i2,i1) = OneBody(i1,i2);
     }
@@ -94,9 +94,9 @@ void Operator::SetOneBodyDiracHamiltonian()
     for (int i2=i1; i2<norbs; i2++){
       Orbit& o1 = orbits.GetOrbit(i1);
       Orbit& o2 = orbits.GetOrbit(i2);
-      if(o1.k != o2.k) continue;
+      if(o1.kappa != o2.kappa) continue;
       double mass_term = 0;
-      if(o1.e2 ==-1) mass_term = -2*PhysConst::c * PhysConst::c*MEOverlap(o1, o2, zeta, Z);
+      if(o1.ls ==-1) mass_term = -2*PhysConst::c * PhysConst::c*MEOverlap(o1, o2, zeta, Z);
       OneBody(i1,i2) = MEKinetic(o1, o2, zeta, Z) - Z * MENuclPot(o1, o2, zeta, Z) + mass_term;
       OneBody(i2,i1) = OneBody(i1,i2);
     }

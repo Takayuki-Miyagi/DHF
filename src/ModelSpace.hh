@@ -14,12 +14,14 @@ class OneBodySpace
     OneBodySpace(Orbits&);
 
     Orbits * orbits;
-    std::unordered_set<int> kappas;
+    //std::unordered_set<int> kappas;
+    std::vector<int> kappas;
     std::vector<std::vector<int>> channels;
     std::map <int, int> orbit_index_to_channel_index;
     int number_channels;
     //
-    int GetNumberChannels() {return number_channels;}
+    int GetNumberChannels() {return number_channels;};
+    int GetKappa(int idx) {return kappas[idx];};
     void PrintSpace();
 };
 

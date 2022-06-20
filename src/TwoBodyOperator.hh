@@ -24,6 +24,7 @@ class TwoBodyOperator
     int rankJ, rankP, rankTz;
     ModelSpace * modelspace;
     std::map<std::array<int,2>,TwoBodyOperatorChannel> Channels;
+    int NMesh;
 
     // Constructor
     ~TwoBodyOperator();
@@ -41,6 +42,11 @@ class TwoBodyOperator
     void Print();
 
     void SetTwoBodyCoulombTerm();
+    void SetNMesh(int num) {NMesh=num;};
     double MECoulomb(Orbit&, Orbit&, Orbit&, Orbit&, int);
+    double TestMECoulomb(Orbit&, Orbit&, Orbit&, Orbit&, int);
+    void StoreCoulombIntegrals();
+    double GetCoulombIntegral(int, int, int, int, int);
+    
 };
 #endif

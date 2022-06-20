@@ -5,6 +5,7 @@
 #include "TwoBodySpace.hh"
 #include "TwoBodyOperator.hh"
 
+std::map<std::array<int,5>,double> CoulombIntegrals;
 
 TwoBodyOperatorChannel::~TwoBodyOperatorChannel()
 {}
@@ -25,7 +26,7 @@ TwoBodyOperator::TwoBodyOperator()
 {}
 
 TwoBodyOperator::TwoBodyOperator(ModelSpace& ms, int rankJ, int rankP, int rankTz)
-  : modelspace(&ms), rankJ(rankJ), rankP(rankP), rankTz(rankTz)
+  : modelspace(&ms), rankJ(rankJ), rankP(rankP), rankTz(rankTz), NMesh(500)
 {
   TwoBodySpace& tbs = modelspace->two;
   for (int ichbra=0; ichbra<tbs.GetNumberChannels(); ichbra++){
@@ -76,8 +77,8 @@ double TwoBodyOperator::Get2BME_J(int Jbra, int Jket, Orbit& oi, Orbit& oj, Orbi
   TwoBodySpace & tbs = modelspace->two;
   int Prty_bra = pow((-1), oi.l+oj.l);
   int Prty_ket = pow((-1), ok.l+ol.l);
-  int Tz_bra = (oi.e2 + oj.e2)/2;
-  int Tz_ket = (ok.e2 + ol.e2)/2;
+  int Tz_bra = (oi.ls + oj.ls)/2;
+  int Tz_ket = (ok.ls + ol.ls)/2;
   int ichbra = tbs.GetChannelIndex(Jbra, Prty_bra, Tz_bra);
   int ichket = tbs.GetChannelIndex(Jket, Prty_ket, Tz_ket);
   return Get2BME(ichbra, ichket, oi, oj, ok, ol);
@@ -131,8 +132,8 @@ void TwoBodyOperator::Set2BME_J(int Jbra, int Jket, Orbit& oi, Orbit& oj, Orbit&
 {
   int Prty_bra = pow((-1), oi.l+oj.l);
   int Prty_ket = pow((-1), ok.l+ol.l);
-  int Tz_bra = (oi.e2 + oj.e2)/2;
-  int Tz_ket = (ok.e2 + ol.e2)/2;
+  int Tz_bra = (oi.ls + oj.ls)/2;
+  int Tz_ket = (ok.ls + ol.ls)/2;
   TwoBodySpace & tbs = modelspace->two;
   int ichbra = tbs.GetChannelIndex(Jbra, Prty_bra, Tz_bra);
   int ichket = tbs.GetChannelIndex(Jket, Prty_ket, Tz_ket);
@@ -171,10 +172,12 @@ void TwoBodyOperator::Print()
 
 void TwoBodyOperator::SetTwoBodyCoulombTerm()
 {
+  StoreCoulombIntegrals();
   TwoBodySpace& tbs = modelspace->GetTwoBodySpace();
   Orbits& orbits = modelspace->GetOrbits();
   for (int ich=0; ich<tbs.GetNumberChannels(); ich++){
     TwoBodyChannel& tbc = tbs.GetChannel(ich);
+    #pragma omp parallel for
     for(int idxbra=0; idxbra<tbc.GetNumberStates(); idxbra++){
       for(int idxket=idxbra; idxket<tbc.GetNumberStates(); idxket++){
         int i = tbc.GetOrbitIndex1(idxbra);
@@ -191,6 +194,8 @@ void TwoBodyOperator::SetTwoBodyCoulombTerm()
         double v = 0;
         v = MECoulomb(oi, oj, ok, ol, tbc.J);
         v += MECoulomb(oi, oj, ol, ok, tbc.J) * pow((-1), ( (ok.j2+ol.j2)/2 - tbc.J + 1));
+        //v = TestMECoulomb(oi, oj, ok, ol, tbc.J);
+        //v += TestMECoulomb(oi, oj, ol, ok, tbc.J) * pow((-1), ( (ok.j2+ol.j2)/2 - tbc.J + 1));
         v *= norm;
         Set2BME(ich, ich, i, j, k, l, v);
       }
@@ -200,14 +205,41 @@ void TwoBodyOperator::SetTwoBodyCoulombTerm()
 
 double TwoBodyOperator::MECoulomb(Orbit& o1, Orbit& o2, Orbit& o3, Orbit& o4, int J)
 {
-  if (o1.e2 != o3.e2) return 0.0;
-  if (o2.e2 != o4.e2) return 0.0;
+  if (o1.ls != o3.ls) return 0.0;
+  if (o2.ls != o4.ls) return 0.0;
+  int i1 = modelspace->orbits.GetOrbitIndex(o1);
+  int i2 = modelspace->orbits.GetOrbitIndex(o2);
+  int i3 = modelspace->orbits.GetOrbitIndex(o3);
+  int i4 = modelspace->orbits.GetOrbitIndex(o4);
+  double zeta = modelspace->GetZeta();
+  double Z = modelspace->GetProtonNumber();
+  int Lmin = std::max(std::abs(o1.j2-o3.j2), std::abs(o2.j2-o4.j2))/2;
+  int Lmax = std::min(        (o1.j2+o3.j2),         (o2.j2+o4.j2))/2;
+  double r = 0.0;
+  for (int L=Lmin; L<=Lmax; L++) {
+    if ( (o1.l+o3.l+L)%2 == 1 ) continue;
+    if ( (o2.l+o4.l+L)%2 == 1 ) continue;
+    if (abs(o1.l-o3.l) > L or o1.l+o3.l < L) continue;
+    if (abs(o2.l-o4.l) > L or o2.l+o4.l < L) continue;
+    double angular = gsl_sf_coupling_6j(o1.j2, o2.j2, 2*J, o4.j2, o3.j2, 2*L) *
+      gsl_sf_coupling_3j(o1.j2, 2*L, o3.j2, -1, 0, 1) *
+      gsl_sf_coupling_3j(o2.j2, 2*L, o4.j2, -1, 0, 1);
+    if(std::abs(angular) < 1.e-8) continue;
+    r += angular * GetCoulombIntegral(i1,i2,i3,i4,L);
+  }
+  r *= sqrt( (o1.j2+1) * (o2.j2+1) * (o3.j2+1) * (o4.j2+1)) * pow( (-1), (o1.j2+o3.j2)/2+J );
+  return r;
+}
+
+double TwoBodyOperator::TestMECoulomb(Orbit& o1, Orbit& o2, Orbit& o3, Orbit& o4, int J)
+{
+  if (o1.ls != o3.ls) return 0.0;
+  if (o2.ls != o4.ls) return 0.0;
   double zeta = modelspace->GetZeta();
   double Z = modelspace->GetProtonNumber();
   int Lmin = std::max(std::abs(o1.j2-o3.j2), std::abs(o2.j2-o4.j2))/2;
   int Lmax = std::min(        (o1.j2+o3.j2),         (o2.j2+o4.j2))/2;
   double rmax = 50;
-  int NMesh = 200;
   gsl_integration_fixed_workspace *workspace;
   //const gsl_integration_fixed_type *T = gsl_integration_fixed_legendre;
   const gsl_integration_fixed_type *T = gsl_integration_fixed_laguerre;
@@ -229,15 +261,113 @@ double TwoBodyOperator::MECoulomb(Orbit& o1, Orbit& o2, Orbit& o3, Orbit& o4, in
         double wx = workspace->weights[i];
         double y = workspace->x[j];
         double wy = workspace->weights[j];
-        Integral += wx * wy * o1.RadialFunction(x, zeta, Z, o1.e2, true) *
-          o2.RadialFunction(y, zeta, Z, o2.e2, true) *
-          o3.RadialFunction(x, zeta, Z, o3.e2, true) *
-          o4.RadialFunction(y, zeta, Z, o4.e2, true) *
-          pow( std::min(x,y), L) / pow( std::max(x,y), (L+1) ) * o1.e2 * o2.e2;
+        Integral += wx * wy * o1.RadialFunction(x, zeta, Z, true) *
+          o2.RadialFunction(y, zeta, Z, true) *
+          o3.RadialFunction(x, zeta, Z, true) *
+          o4.RadialFunction(y, zeta, Z, true) *
+          pow( std::min(x,y), L) / pow( std::max(x,y), (L+1) );
       }
     }
     r += angular * Integral;
   }
   r *= sqrt( (o1.j2+1) * (o2.j2+1) * (o3.j2+1) * (o4.j2+1)) * pow( (-1), (o1.j2+o3.j2)/2+J );
   return r;
+}
+
+
+void TwoBodyOperator::StoreCoulombIntegrals()
+{
+  Orbits& orbits = modelspace->GetOrbits();
+  int nmax = orbits.GetNmax();
+  int kappa_min = orbits.GetKappaMin();
+  int kappa_max = orbits.GetKappaMax();
+  double zeta = modelspace->GetZeta();
+  double Z = modelspace->GetProtonNumber();
+  const gsl_integration_fixed_type *T = gsl_integration_fixed_laguerre;
+  gsl_integration_fixed_workspace *workspace;
+  workspace = gsl_integration_fixed_alloc(T, NMesh, 0.0, 2.0/zeta, 0.0, 0.0);
+
+  std::vector<int> i1_list;
+  std::vector<int> i3_list;
+  std::map<std::array<int,2>,int> Index;
+  int cnt = 0;
+  for (int i1=0; i1<orbits.GetNumberOrbits(); i1++){
+    for (int i3=0; i3<orbits.GetNumberOrbits(); i3++){
+      Orbit & o1 = orbits.GetOrbit(i1);
+      Orbit & o3 = orbits.GetOrbit(i3);
+      if(o1.ls != o3.ls) continue;
+      i1_list.push_back(i1);
+      i3_list.push_back(i3);
+      Index[{i1,i3}] = cnt;
+      cnt += 1;
+    }
+  }
+
+  std::map<std::array<int,3>,double> tmp;
+  #pragma omp parallel for
+  for (int i2=0; i2<NMesh; i2++){
+    double r2 = workspace->x[i2];
+    for (int iket=0; iket<Index.size(); iket++){
+      int i1 = i1_list[iket];
+      int i3 = i3_list[iket];
+      Orbit & o1 = orbits.GetOrbit(i1);
+      Orbit & o3 = orbits.GetOrbit(i3);
+      std::vector<double> Rnl;
+      for (int i1=0; i1<NMesh; i1++){
+        double r = workspace->x[i1];
+        double w = workspace->weights[i1];
+        double rnl = w * o1.RadialFunction(r, zeta, Z, true) * o3.RadialFunction(r, zeta, Z, true);
+        Rnl.push_back(rnl);
+      }
+
+      for (int L = std::max(0,std::abs(o1.l-o3.l)-1); L<=o1.l+o3.l+1; L++) {
+        double Int = 0.0;
+        for (int i1=0; i1<NMesh; i1++){
+          double r1 = workspace->x[i1];
+          Int += pow(std::min(r1,r2),L) / pow(std::max(r1,r2),L+1) * Rnl[i1];
+        }
+        #pragma omp critical
+        tmp[{i2,L,iket}] = Int;
+      }
+    }
+  }
+
+  #pragma omp parallel for
+  for (int ibra=0; ibra<Index.size(); ibra++){
+    int i1 = i1_list[ibra];
+    int i3 = i3_list[ibra];
+    Orbit & o1 = orbits.GetOrbit(i1);
+    Orbit & o3 = orbits.GetOrbit(i3);
+    for (int iket=0; iket<Index.size(); iket++){
+      int i2 = i1_list[iket];
+      int i4 = i3_list[iket];
+      Orbit & o2 = orbits.GetOrbit(i2);
+      Orbit & o4 = orbits.GetOrbit(i4);
+
+      int Lmin = std::max(0, std::max(std::abs(o1.l-o3.l)-1, std::abs(o2.l-o4.l)-1));
+      int Lmax = std::min(o1.l+o3.l+1, o2.l+o4.l+1);
+      for (int L=Lmin; L<=Lmax; L++){
+        if((o1.l+o3.l+L)%2==1) continue;
+        if((o2.l+o4.l+L)%2==1) continue;
+        double Int = 0.0;
+        for (int i=0; i<NMesh; i++){
+          double r = workspace->x[i];
+          double w = workspace->weights[i];
+          Int += tmp[{i,L,iket}] * w * o1.RadialFunction(r, zeta, Z, true) * o3.RadialFunction(r, zeta, Z, true);
+        }
+        #pragma omp critical
+        CoulombIntegrals[{i1,i2,i3,i4,L}] = Int;
+      }
+    }
+  }
+}
+
+double TwoBodyOperator::GetCoulombIntegral(int i1, int i2, int i3, int i4, int L)
+{
+  auto it = CoulombIntegrals.find({i1,i2,i3,i4,L});
+  if(it != CoulombIntegrals.end()){
+    return it->second;
+  }
+  std::cout << "Something wrong..." << std::endl;
+  return 0.0;
 }

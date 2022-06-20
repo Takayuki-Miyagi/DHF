@@ -17,13 +17,14 @@ OneBodySpace::OneBodySpace()
 OneBodySpace::OneBodySpace(Orbits& orbs)
   : orbits(&orbs)
 {
-  for (Orbit& o : orbits->orbits){ kappas.insert(o.k); }
-  std::vector<int> kappas1(kappas.begin(), kappas.end());
-  std::sort(kappas1.begin(), kappas1.end(), std::greater<int>());
-  for (int channel_idx=0; channel_idx<kappas1.size(); channel_idx++){
+  std::set<int> tmp;
+  for (Orbit& o : orbits->orbits) tmp.insert(o.kappa); 
+  for (auto it : tmp) kappas.push_back(it);
+  std::sort(kappas.begin(), kappas.end(), std::greater<int>());
+  for (int channel_idx=0; channel_idx<kappas.size(); channel_idx++){
     std::vector <int> idxs;
     for (auto o : orbits->orbits){
-      if (o.k != kappas1[channel_idx]) {continue;}
+      if (o.kappa != kappas[channel_idx]) continue;
       idxs.push_back(orbits->GetOrbitIndex(o));
       orbit_index_to_channel_index[orbits->GetOrbitIndex(o)] = channel_idx;
     }
@@ -117,14 +118,14 @@ std::map<int,double> ModelSpace::AssignHoles(int N_ele)
   // e = n + l
   std::map<int,double> holes;
   int N = 0;
-  for (int e=0; e<=200; ++e) {
+  for (int e=0; e<=orbits.GetNmax(); ++e) {
     int d = std::min(N_ele-N, 2); // n=e, l=0
     holes[orbits.GetOrbitIndex(e,0,1,1)] = d * 0.5;
     N += d;
     if(N==N_ele) return holes;
-    for (int l=e; l>=1; --l){
+    for (int l=std::min(e,orbits.GetLmax()); l>=1; --l){
       int n = e - l - std::max(0,l-1);
-      if(n < 0) continue;
+      if(n > orbits.GetNmax() or n < 0) continue;
       for (int j2=std::abs(2*l-1); j2<=2*l+1; j2+=2)
       {
         d = std::min(N_ele-N, j2+1);
@@ -135,6 +136,8 @@ std::map<int,double> ModelSpace::AssignHoles(int N_ele)
     }
   }
   std::cout << "Something seems wrong in AssignHoles, N=" << N << std::endl;
+  std::cout << "Try again with a larger model space" << std::endl;
+  exit(0);
   return holes;
 }
 
@@ -157,8 +160,8 @@ void ModelSpace::PrintHoleOrbits()
     if(std::abs(hole_occ[idx]) < 1.e-4) continue;
     Orbit& o = orbits.GetOrbit(idx);
     int width = 4;
-    std::cout << " idx =" << std::setw(width) << orbits.GetOrbitIndex(o.n, o.l, o.j2, o.e2) <<
-      ", n =" << std::setw(width) << o.n << ", l =" << std::setw(width) << o.l << ", j2 =" << std::setw(width) << o.j2 << ", e2 =" << std::setw(width) << o.e2 <<
+    std::cout << " idx =" << std::setw(width) << orbits.GetOrbitIndex(o.n, o.l, o.j2, o.ls) <<
+      ", n =" << std::setw(width) << o.n << ", l =" << std::setw(width) << o.l << ", j2 =" << std::setw(width) << o.j2 << ", L/S =" << std::setw(width) << o.ls <<
       ", prob = " << std::setw(width) << hole_occ[idx] << ", occ = " << std::setw(width) << hole_occ[idx]*(o.j2+1) << std::endl;
     
   }
