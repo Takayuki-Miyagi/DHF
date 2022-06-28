@@ -81,14 +81,16 @@ HartreeFock::HartreeFock(Operator& H)
   r = UpdateFock();
   DiagonalizeFock();
   UpdateDensityMatrix();
+  r = UpdateFock(0);
   CalcEnergy();
+  PrintStatus(0);
 }
 
 void HartreeFock::Solve() {
-  for (int n_iter=0; n_iter<100; n_iter++) {
-    r = UpdateFock(n_iter);
+  for (int n_iter=1; n_iter<1000; n_iter++) {
     DiagonalizeFock();
     UpdateDensityMatrix();
+    r = UpdateFock(0);
     CalcEnergy();
     PrintStatus(n_iter);
     if (r < 1.e-8) break;
@@ -131,45 +133,15 @@ void HartreeFock::DiagonalizeFock() {
     arma::eig_sym(eig, vec, Fch);
     SPEs(sub_idx) = eig;
     C(sub_idx, sub_idx) = vec;
-    //ElectronStates = GetElectronStates();
   }
 }
 
 void HartreeFock::UpdateDensityMatrix() {
-  OneBodySpace& obs = modelspace->GetOneBodySpace();
-  Orbits& orbits = modelspace->GetOrbits();
-  int norbs = orbits.GetNumberOrbits();
+  int norbs = modelspace->GetNumberOrbits();
   arma::mat tmp(norbs, norbs, arma::fill::zeros);
-  std::map<int,int> orbit_idx_to_spe_idx;
-  for (int ich=0; ich<obs.GetNumberChannels(); ich++) {
-    std::vector<unsigned long long> tmp(obs.channels[ich].begin(), obs.channels[ich].end());
-    arma::uvec sub_idx(std::vector<unsigned long long>(tmp.begin(), tmp.end()));
-
-    int n, e2;
-    int n_ch = obs.channels[ich].size();
-    for (int i=0; i<n_ch; i++) {
-      int idx_spe = obs.channels[ich][i];
-      if(orbits.relativistic){
-        if (i < n_ch/2 ) {
-          n = i;
-          e2=-1;
-        } else {
-          n = i - floor(n_ch/2);
-          e2= 1;
-        }
-      }
-      else{
-        n = i;
-        e2 = 1;
-      }
-      Orbit& o = orbits.GetOrbit(idx_spe);
-      int idx = orbits.GetOrbitIndex(n, o.l, o.j2, e2);
-      orbit_idx_to_spe_idx[idx] = idx_spe;
-    }
-  }
+  modelspace->UpdateOrbitals(SPEs);
   for ( auto hole : modelspace->hole_occ) {
-    int spe_idx = orbit_idx_to_spe_idx[hole.first];
-    tmp(spe_idx, spe_idx) = hole.second;
+    tmp(hole.first,hole.first) = hole.second;
   }
   rho = C * tmp * C.t();
 }
@@ -195,15 +167,5 @@ void HartreeFock::PrintStatus(int n_iter) {
     << ", TwoBody: " << std::fixed << std::setw(12) << E2
     << ", EHF: " << std::fixed << std::setw(12) << EHF
     << std::endl;
-  //std::cout << "\n";
-  //printf("nth iteration: %d, HF energy: %3f ", n_iter, EHF);
-  //std::cout << "\n" << "\n";
-  //F.print("Fock Matrix");
-  //std::cout << "\n";
-  //SPEs.t().print("SPEs");
-  //std::cout << "\n";
-  //C.print("Coeffs");
-  //std::cout << "\n";
-  //rho.print("Density Matrix");
-  //std::cout << "\n";
 }
+

@@ -25,8 +25,8 @@ TwoBodyOperator::~TwoBodyOperator()
 TwoBodyOperator::TwoBodyOperator()
 {}
 
-TwoBodyOperator::TwoBodyOperator(ModelSpace& ms, int rankJ, int rankP, int rankTz)
-  : modelspace(&ms), rankJ(rankJ), rankP(rankP), rankTz(rankTz), NMesh(500)
+TwoBodyOperator::TwoBodyOperator(ModelSpace& ms, int rankJ, int rankP)
+  : modelspace(&ms), rankJ(rankJ), rankP(rankP), NMesh(2000), Rmax(100), MeshType("Legendre")
 {
   TwoBodySpace& tbs = modelspace->two;
   for (int ichbra=0; ichbra<tbs.GetNumberChannels(); ichbra++){
@@ -35,11 +35,43 @@ TwoBodyOperator::TwoBodyOperator(ModelSpace& ms, int rankJ, int rankP, int rankT
       TwoBodyChannel& chket = tbs.GetChannel(ichket);
       if(std::abs(chbra.J - chket.J) > rankJ or chbra.J+chket.J < rankJ) continue;
       if(chbra.Prty * chket.Prty * rankP == -1) continue;
-      if(std::abs(chbra.Tz - chket.Tz) != rankTz) continue;
       Channels[{ichbra,ichket}] = TwoBodyOperatorChannel(chbra, chket);
     }
   }
 }
+
+TwoBodyOperator& TwoBodyOperator::operator*=(const double rhs)
+{
+  for ( auto& itmat : Channels )
+  {
+    itmat.second.MEs *= rhs;
+  }
+  return *this;
+}
+
+TwoBodyOperator& TwoBodyOperator::operator+=(const TwoBodyOperator& rhs)
+{
+  for ( auto& itmat : rhs.Channels )
+  {
+    int ch_bra = itmat.first[0];
+    int ch_ket = itmat.first[1];
+    Channels[{ch_bra,ch_ket}].MEs += itmat.second.MEs;
+  }
+  return *this;
+}
+
+TwoBodyOperator& TwoBodyOperator::operator-=(const TwoBodyOperator& rhs)
+{
+  for ( auto& itmat : rhs.Channels )
+  {
+    auto ch_bra = itmat.first[0];
+    auto ch_ket = itmat.first[1];
+    Channels[{ch_bra,ch_ket}].MEs -= itmat.second.MEs;
+  }
+  return *this;
+}
+
+
 
 double TwoBodyOperator::Get2BME(int ichbra, int ichket, int i, int j, int k, int l)
 {
@@ -51,7 +83,6 @@ double TwoBodyOperator::Get2BME(int ichbra, int ichket, int i, int j, int k, int
   if(i==j and chbra.J%2==1) return 0;
   if(k==l and chket.J%2==1) return 0;
   if(chbra.Prty * chket.Prty * rankP == -1) return 0;
-  if(std::abs(chbra.Tz - chket.Tz) != rankTz) return 0;
   if(std::abs(chbra.J - chket.J) > rankJ or chbra.J+chket.J < rankJ) return 0;
   double phase = 1;
   phase *= chbra.GetPhaseFactor(i,j);
@@ -64,12 +95,7 @@ double TwoBodyOperator::Get2BME(int ichbra, int ichket, int i, int j, int k, int
 
 double TwoBodyOperator::Get2BME(int ichbra, int ichket, Orbit& oi, Orbit& oj, Orbit& ok, Orbit& ol)
 {
-  Orbits& orbits = modelspace->orbits;
-  int i = orbits.GetOrbitIndex(oi);
-  int j = orbits.GetOrbitIndex(oj);
-  int k = orbits.GetOrbitIndex(ok);
-  int l = orbits.GetOrbitIndex(ol);
-  return Get2BME(ichbra, ichket, i, j, k, l);
+  return Get2BME(ichbra, ichket, oi.idx, oj.idx, ok.idx, ol.idx);
 }
 
 double TwoBodyOperator::Get2BME_J(int Jbra, int Jket, Orbit& oi, Orbit& oj, Orbit& ok, Orbit& ol)
@@ -77,10 +103,8 @@ double TwoBodyOperator::Get2BME_J(int Jbra, int Jket, Orbit& oi, Orbit& oj, Orbi
   TwoBodySpace & tbs = modelspace->two;
   int Prty_bra = pow((-1), oi.l+oj.l);
   int Prty_ket = pow((-1), ok.l+ol.l);
-  int Tz_bra = (oi.ls + oj.ls)/2;
-  int Tz_ket = (ok.ls + ol.ls)/2;
-  int ichbra = tbs.GetChannelIndex(Jbra, Prty_bra, Tz_bra);
-  int ichket = tbs.GetChannelIndex(Jket, Prty_ket, Tz_ket);
+  int ichbra = tbs.GetChannelIndex(Jbra, Prty_bra);
+  int ichket = tbs.GetChannelIndex(Jket, Prty_ket);
   return Get2BME(ichbra, ichket, oi, oj, ok, ol);
 }
 
@@ -102,7 +126,6 @@ void TwoBodyOperator::Set2BME(int ichbra, int ichket, int i, int j, int k, int l
   if(i==j and chbra.J%2==1) return;
   if(k==l and chket.J%2==1) return;
   if(chbra.Prty * chket.Prty * rankP == -1) return;
-  if(std::abs(chbra.Tz - chket.Tz) != rankTz) return;
   if(std::abs(chbra.J - chket.J) > rankJ or chbra.J+chket.J < rankJ) return;
   int idxbra = chbra.GetIndex(i,j);
   int idxket = chket.GetIndex(k,l);
@@ -132,11 +155,9 @@ void TwoBodyOperator::Set2BME_J(int Jbra, int Jket, Orbit& oi, Orbit& oj, Orbit&
 {
   int Prty_bra = pow((-1), oi.l+oj.l);
   int Prty_ket = pow((-1), ok.l+ol.l);
-  int Tz_bra = (oi.ls + oj.ls)/2;
-  int Tz_ket = (ok.ls + ol.ls)/2;
   TwoBodySpace & tbs = modelspace->two;
-  int ichbra = tbs.GetChannelIndex(Jbra, Prty_bra, Tz_bra);
-  int ichket = tbs.GetChannelIndex(Jket, Prty_ket, Tz_ket);
+  int ichbra = tbs.GetChannelIndex(Jbra, Prty_bra);
+  int ichket = tbs.GetChannelIndex(Jket, Prty_ket);
   Set2BME(ichbra, ichket, oi, oj, ok, ol, me);
 }
 
@@ -161,10 +182,8 @@ void TwoBodyOperator::Print()
     std::cout
       << "Jbra=" << std::setw(4) << chbra->J
       << ", Prty bra=" << std::setw(4) << chbra->Prty
-      << ", Tz bra=" << std::setw(4) << chbra->Tz
       << " | Jket=" << std::setw(4) << chket->J
-      << ", Prty ket=" << std::setw(4) << chket->Prty
-      << ", Tz ket=" << std::setw(4) << chket->Tz << std::endl;
+      << ", Prty ket=" << std::setw(4) << chket->Prty << std::endl;
     arma::mat& m = op_ch.MEs;
     std::cout << m << std::endl;
   }
@@ -172,6 +191,10 @@ void TwoBodyOperator::Print()
 
 void TwoBodyOperator::SetTwoBodyCoulombTerm()
 {
+  if(std::ifstream(FileNameCoulomb).good()){
+    ReadFileInteraction(FileNameCoulomb);
+    return;
+  }
   StoreCoulombIntegrals();
   TwoBodySpace& tbs = modelspace->GetTwoBodySpace();
   Orbits& orbits = modelspace->GetOrbits();
@@ -201,16 +224,15 @@ void TwoBodyOperator::SetTwoBodyCoulombTerm()
       }
     }
   }
+  if(not std::ifstream(FileNameCoulomb).good()){
+    WriteFileInteraction(FileNameCoulomb);
+  }
 }
 
 double TwoBodyOperator::MECoulomb(Orbit& o1, Orbit& o2, Orbit& o3, Orbit& o4, int J)
 {
   if (o1.ls != o3.ls) return 0.0;
   if (o2.ls != o4.ls) return 0.0;
-  int i1 = modelspace->orbits.GetOrbitIndex(o1);
-  int i2 = modelspace->orbits.GetOrbitIndex(o2);
-  int i3 = modelspace->orbits.GetOrbitIndex(o3);
-  int i4 = modelspace->orbits.GetOrbitIndex(o4);
   double zeta = modelspace->GetZeta();
   double Z = modelspace->GetProtonNumber();
   int Lmin = std::max(std::abs(o1.j2-o3.j2), std::abs(o2.j2-o4.j2))/2;
@@ -225,9 +247,10 @@ double TwoBodyOperator::MECoulomb(Orbit& o1, Orbit& o2, Orbit& o3, Orbit& o4, in
       gsl_sf_coupling_3j(o1.j2, 2*L, o3.j2, -1, 0, 1) *
       gsl_sf_coupling_3j(o2.j2, 2*L, o4.j2, -1, 0, 1);
     if(std::abs(angular) < 1.e-8) continue;
-    r += angular * GetCoulombIntegral(i1,i2,i3,i4,L);
+    r += angular * GetCoulombIntegral(o1.idx,o2.idx,o3.idx,o4.idx,L);
   }
   r *= sqrt( (o1.j2+1) * (o2.j2+1) * (o3.j2+1) * (o4.j2+1)) * pow( (-1), (o1.j2+o3.j2)/2+J );
+  //r *= sqrt( (o1.j2+1) * (o2.j2+1) * (o3.j2+1) * (o4.j2+1)) * pow( (-1), (o1.j2+o3.j2)/2+J ) * o1.ls * o2.ls;
   return r;
 }
 
@@ -239,11 +262,19 @@ double TwoBodyOperator::TestMECoulomb(Orbit& o1, Orbit& o2, Orbit& o3, Orbit& o4
   double Z = modelspace->GetProtonNumber();
   int Lmin = std::max(std::abs(o1.j2-o3.j2), std::abs(o2.j2-o4.j2))/2;
   int Lmax = std::min(        (o1.j2+o3.j2),         (o2.j2+o4.j2))/2;
-  double rmax = 50;
   gsl_integration_fixed_workspace *workspace;
-  //const gsl_integration_fixed_type *T = gsl_integration_fixed_legendre;
-  const gsl_integration_fixed_type *T = gsl_integration_fixed_laguerre;
-  workspace = gsl_integration_fixed_alloc(T, NMesh, 0.0, 2.0/zeta, 0.0, 0.0);
+  const gsl_integration_fixed_type *T = gsl_integration_fixed_legendre;
+  bool norm_weight;
+  if(MeshType=="Legendre"){
+    norm_weight = false;
+    T = gsl_integration_fixed_legendre;
+    workspace = gsl_integration_fixed_alloc(T, NMesh, 0.0, Rmax, 0.0, 0.0);
+  }
+  else if(MeshType=="Laguerre"){
+    T = gsl_integration_fixed_laguerre;
+    bool norm_weight = true;
+    workspace = gsl_integration_fixed_alloc(T, NMesh, 0.0, 2.0/zeta, 0.0, 0.0);
+  }
   double r = 0.0;
   for (int L=Lmin; L<=Lmax; L++) {
     if ( (o1.l+o3.l+L)%2 == 1 ) continue;
@@ -261,10 +292,11 @@ double TwoBodyOperator::TestMECoulomb(Orbit& o1, Orbit& o2, Orbit& o3, Orbit& o4
         double wx = workspace->weights[i];
         double y = workspace->x[j];
         double wy = workspace->weights[j];
-        Integral += wx * wy * o1.RadialFunction(x, zeta, Z, true) *
-          o2.RadialFunction(y, zeta, Z, true) *
-          o3.RadialFunction(x, zeta, Z, true) *
-          o4.RadialFunction(y, zeta, Z, true) *
+        Integral += wx * wy * 
+          o1.RadialFunction(x, zeta, Z, norm_weight) *
+          o2.RadialFunction(y, zeta, Z, norm_weight) *
+          o3.RadialFunction(x, zeta, Z, norm_weight) *
+          o4.RadialFunction(y, zeta, Z, norm_weight) *
           pow( std::min(x,y), L) / pow( std::max(x,y), (L+1) );
       }
     }
@@ -283,9 +315,46 @@ void TwoBodyOperator::StoreCoulombIntegrals()
   int kappa_max = orbits.GetKappaMax();
   double zeta = modelspace->GetZeta();
   double Z = modelspace->GetProtonNumber();
-  const gsl_integration_fixed_type *T = gsl_integration_fixed_laguerre;
+
+
   gsl_integration_fixed_workspace *workspace;
-  workspace = gsl_integration_fixed_alloc(T, NMesh, 0.0, 2.0/zeta, 0.0, 0.0);
+  const gsl_integration_fixed_type *T_leg = gsl_integration_fixed_legendre;
+  const gsl_integration_fixed_type *T_lag = gsl_integration_fixed_laguerre;
+  bool norm_weight;
+  if(MeshType=="Legendre"){
+    int NMesh_lag = 100;
+    if(NMesh < NMesh_lag) {
+      std::cout << "Increase NMesh!" << std::endl;
+      exit(0);
+    }
+    norm_weight = false;
+    workspace = gsl_integration_fixed_alloc(T_leg, NMesh, 0.0, Rmax, 0.0, 0.0);
+    gsl_integration_fixed_workspace *workspace_tmp1;
+    gsl_integration_fixed_workspace *workspace_tmp2;
+    workspace_tmp1 = gsl_integration_fixed_alloc(T_leg, NMesh-NMesh_lag, 0.0, Rmax, 0.0, 0.0);
+    workspace_tmp2 = gsl_integration_fixed_alloc(T_lag, NMesh_lag, Rmax, 2.0/zeta, 0.0, 0.0);
+    for (int i = 0; i<NMesh; i++){
+      if(i < NMesh-NMesh_lag){
+        workspace->x[i] = workspace_tmp1->x[i];
+        workspace->weights[i] = workspace_tmp1->weights[i];
+      }
+      else{
+        workspace->x[i] = workspace_tmp2->x[i-NMesh+NMesh_lag];
+        workspace->weights[i] = workspace_tmp2->weights[i-NMesh+NMesh_lag] * exp(2.0*(workspace->x[i]-Rmax)/zeta);
+      }
+    }
+  }
+  else if(MeshType=="Laguerre"){
+    norm_weight = true;
+    workspace = gsl_integration_fixed_alloc(T_lag, NMesh, 0.0, 2.0/zeta, 0.0, 0.0);
+  }
+
+  //for (int i=0; i<NMesh; i++){
+  //std::cout << std::setw(6) << i
+  //  << std::setw(16) << std::setprecision(8) << workspace->x[i]
+  //  << std::setw(16) << std::setprecision(8) << workspace->weights[i]
+  //  << std::endl;
+  //}
 
   std::vector<int> i1_list;
   std::vector<int> i3_list;
@@ -316,7 +385,9 @@ void TwoBodyOperator::StoreCoulombIntegrals()
       for (int i1=0; i1<NMesh; i1++){
         double r = workspace->x[i1];
         double w = workspace->weights[i1];
-        double rnl = w * o1.RadialFunction(r, zeta, Z, true) * o3.RadialFunction(r, zeta, Z, true);
+        double rnl = w 
+          * o1.RadialFunction(r, zeta, Z, norm_weight) 
+          * o3.RadialFunction(r, zeta, Z, norm_weight);
         Rnl.push_back(rnl);
       }
 
@@ -353,7 +424,9 @@ void TwoBodyOperator::StoreCoulombIntegrals()
         for (int i=0; i<NMesh; i++){
           double r = workspace->x[i];
           double w = workspace->weights[i];
-          Int += tmp[{i,L,iket}] * w * o1.RadialFunction(r, zeta, Z, true) * o3.RadialFunction(r, zeta, Z, true);
+          Int += tmp[{i,L,iket}] * w * 
+            o1.RadialFunction(r, zeta, Z, norm_weight) * 
+            o3.RadialFunction(r, zeta, Z, norm_weight);
         }
         #pragma omp critical
         CoulombIntegrals[{i1,i2,i3,i4,L}] = Int;
@@ -370,4 +443,106 @@ double TwoBodyOperator::GetCoulombIntegral(int i1, int i2, int i3, int i4, int L
   }
   std::cout << "Something wrong..." << std::endl;
   return 0.0;
+}
+
+void TwoBodyOperator::ReadFileInteraction(std::string filename)
+{
+  if(filename=="") return;
+  if(not std::ifstream(FileNameCoulomb).good()){
+    std::cout << "File not found: " << FileNameCoulomb << std::endl;
+  }
+  long long int num_MEs = CountInteractionMEs();
+  std::vector<double> MEs(num_MEs);
+  std::ifstream input(filename, std::ios::in | std::ios::binary);
+  input.read((char*) &MEs[0], num_MEs * sizeof(double));
+  input.close();
+
+  long long int cnt = 0;
+  double zeta = modelspace->GetZeta();
+  Orbits& orbits = modelspace->orbits;
+  for (int i1=0; i1<orbits.GetNumberOrbits(); i1++){
+    Orbit & o1 = orbits.GetOrbit(i1);
+    for (int i2=i1; i2<orbits.GetNumberOrbits(); i2++){
+      Orbit & o2 = orbits.GetOrbit(i2);
+
+      for (int i3=0; i3<orbits.GetNumberOrbits(); i3++){
+        Orbit & o3 = orbits.GetOrbit(i3);
+        for (int i4=i3; i4<orbits.GetNumberOrbits(); i4++){
+          Orbit & o4 = orbits.GetOrbit(i4);
+
+          if(o1.ls + o2.ls != o3.ls + o4.ls) continue;
+          if((o1.l + o2.l + o3.l + o4.l)%2 == 1) continue;
+          int Jmin = std::max(std::abs(o1.j2-o2.j2), std::abs(o3.j2-o4.j2))/2;
+          int Jmax = std::min(std::abs(o1.j2+o2.j2), std::abs(o3.j2+o4.j2))/2;
+          for (int J=Jmin; J<=Jmax; J++){
+            Set2BME_J(J,J,i1,i2,i3,i4,MEs[cnt]/zeta);
+            cnt += 1;
+          }
+        }
+      }
+    }
+  }
+}
+
+void TwoBodyOperator::WriteFileInteraction(std::string filename)
+{
+  if(filename=="") return;
+  double zeta = modelspace->GetZeta();
+  long long int num_MEs = CountInteractionMEs();
+  std::vector<double> MEs(num_MEs,0);
+  long long int cnt = 0;
+  Orbits& orbits = modelspace->orbits;
+  for (int i1=0; i1<orbits.GetNumberOrbits(); i1++){
+    Orbit & o1 = orbits.GetOrbit(i1);
+    for (int i2=i1; i2<orbits.GetNumberOrbits(); i2++){
+      Orbit & o2 = orbits.GetOrbit(i2);
+
+      for (int i3=0; i3<orbits.GetNumberOrbits(); i3++){
+        Orbit & o3 = orbits.GetOrbit(i3);
+        for (int i4=i3; i4<orbits.GetNumberOrbits(); i4++){
+          Orbit & o4 = orbits.GetOrbit(i4);
+
+          if(o1.ls + o2.ls != o3.ls + o4.ls) continue;
+          if((o1.l + o2.l + o3.l + o4.l)%2 == 1) continue;
+          int Jmin = std::max(std::abs(o1.j2-o2.j2), std::abs(o3.j2-o4.j2))/2;
+          int Jmax = std::min(std::abs(o1.j2+o2.j2), std::abs(o3.j2+o4.j2))/2;
+          for (int J=Jmin; J<=Jmax; J++){
+            MEs[cnt] = Get2BME_J(J,J,i1,i2,i3,i4)*zeta;
+            cnt += 1;
+          }
+        }
+      }
+    }
+  }
+  std::ofstream output(filename, std::ios::out | std::ios::binary);
+  output.write((char*) &MEs[0], num_MEs * sizeof(double));
+  output.close();
+}
+
+long long int TwoBodyOperator::CountInteractionMEs()
+{
+  long long int cnt=0;
+  Orbits& orbits = modelspace->orbits;
+  for (int i1=0; i1<orbits.GetNumberOrbits(); i1++){
+    Orbit & o1 = orbits.GetOrbit(i1);
+    for (int i2=i1; i2<orbits.GetNumberOrbits(); i2++){
+      Orbit & o2 = orbits.GetOrbit(i2);
+
+      for (int i3=0; i3<orbits.GetNumberOrbits(); i3++){
+        Orbit & o3 = orbits.GetOrbit(i3);
+        for (int i4=i3; i4<orbits.GetNumberOrbits(); i4++){
+          Orbit & o4 = orbits.GetOrbit(i4);
+
+          if(o1.ls + o2.ls != o3.ls + o4.ls) continue;
+          if((o1.l + o2.l + o3.l + o4.l)%2 == 1) continue;
+          int Jmin = std::max(std::abs(o1.j2-o2.j2), std::abs(o3.j2-o4.j2))/2;
+          int Jmax = std::min(std::abs(o1.j2+o2.j2), std::abs(o3.j2+o4.j2))/2;
+          for (int J=Jmin; J<=Jmax; J++){
+            cnt += 1;
+          }
+        }
+      }
+    }
+  }
+  return cnt;
 }

@@ -47,15 +47,19 @@ std::map<std::string,std::string> Parameters::string_par = {
   {"orbitals", "rel-s2"},        // Orbitals constructing the model space. nonrel-s(num)-p(num)- ... is also possible
   {"atom","He"},        // Target atom 
   {"radial_function_type","LSpinor"}, 
+  {"eeintegral_mesh_type","Legendre"}, 
+  {"filename_coulomb",""}, 
+  {"filename_summary",""},
 };
 
 
 std::map<std::string,double> Parameters::double_par = {
   {"zeta_inv",2},        // Underlying parameter for basis
+  {"eeintegral_rmax",100}, 
 };
 
 std::map<std::string,int> Parameters::int_par = {
-  {"NMesh",100}
+  {"NMesh",2000}
 };
 
 std::map<std::string,std::vector<std::string>> Parameters::vec_par = {

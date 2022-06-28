@@ -1,14 +1,3 @@
-//#include <iostream>
-//#include <fstream>
-//#include <math.h>
-//#include <cmath>
-//#include <string>
-//#include <regex>
-//#include <string_view>
-//#include <gsl/gsl_sf.h>
-//#include <gsl/gsl_math.h>
-//#include <armadillo>
-
 #include <iomanip>
 #include <gsl/gsl_sf_laguerre.h>
 #include <gsl/gsl_sf_gamma.h>
@@ -124,7 +113,7 @@ double Orbit::_LSpinor_P_wave_function_rspace_dr(double x, double zeta, double Z
   if (Norm == 0.0) return 0.0; 
   int nr = n;
   if(kappa>0) nr += 1;
-  double T1 = _LSpinor_P_wave_function_rspace(x, zeta, gam) * ((gam / eta) - 0.5);
+  double T1 = _LSpinor_P_wave_function_rspace(x, zeta, Z) * ((gam / eta) - 0.5);
   double T2;
   if (nr > 0) {
     T2 = -gsl_sf_laguerre_n(nr - 1, 2 * gam + 1, eta) * (N - kappa) / (nr + 2 * gam);
@@ -146,7 +135,7 @@ double Orbit::_LSpinor_Q_wave_function_rspace_dr(double x, double zeta, double Z
   if (Norm == 0.0) return 0.0;
   int nr = n;
   if(kappa>0) nr += 1;
-  double T1 = _LSpinor_Q_wave_function_rspace(x, zeta, gam) * ((gam / eta) - 0.5);
+  double T1 = _LSpinor_Q_wave_function_rspace(x, zeta, Z) * ((gam / eta) - 0.5);
   double T2;
   if (nr > 0) {
     T2 = gsl_sf_laguerre_n(nr - 1, 2 * gam + 1, eta) * (N - kappa) / (nr + 2 * gam);
@@ -191,12 +180,12 @@ Orbits::Orbits(int nmax, int l, std::string radial_function_type, bool relativis
   : lmax(-1), radial_function_type(radial_function_type), relativistic(relativistic),
   labels_orbital_angular_momentum({ "s", "p", "d", "f", "g", "h", "i", "k", "l", "m", "n", "o", "q", "r", "t", "u", "v", "w", "x", "y", "z" })
 {
-  std::vector<int> lslist = {1,-1};
+  std::vector<int> lslist = {-1,1};
   if(not relativistic) lslist = {1};
-  for ( int n = 0; n < nmax+1; n++){
-    for (int j : {2*l-1, 2*l+1} ) {
-      if ( j<0 ){ continue; }
-      for ( int ls : lslist ) {
+  for ( int ls : lslist ) {
+    for ( int n = 0; n < nmax+1; n++){
+      for (int j : {2*l-1, 2*l+1} ) {
+        if ( j<0 ){ continue; }
         AddOrbit(n, l, j, ls);
       }
     }
@@ -248,7 +237,7 @@ void Orbits::AddOrbit(int n, int l, int j, int ls){
   orb.SetRadialFunctionType(radial_function_type);
   orbits.push_back(orb);
   lmax = std::max(lmax, nlje[1]);
-  nmax = std::max(lmax, nlje[0]);
+  nmax = std::max(nmax, nlje[0]);
 
   KappaMin = 100;
   KappaMax =-100;
@@ -334,14 +323,14 @@ int Orbits::GetOrbitIndex(int n, int l, int j2, int ls)
 }
 
 
-//size_t limit = 1000;
-//double epsabs = 1.e-12;
-//double epsrel = 1.e-12;
+size_t limit = 1000;
+double epsabs = 1.e-12;
+double epsrel = 1.e-12;
 
 // This should be somewhat same as scipy.integral.quad
-size_t limit = 50;
-double epsabs = 1.49e-8;
-double epsrel = 1.49e-8;
+//size_t limit = 50;
+//double epsabs = 1.49e-8;
+//double epsrel = 1.49e-8;
 
 //overlap
 double MEOverlap(Orbit& o1, Orbit& o2, double zeta, double Z) {

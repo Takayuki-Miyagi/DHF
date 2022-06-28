@@ -9,8 +9,9 @@
 class Operator
 {
   public:
-    int rankJ, rankP, rankTz;
+    int rankJ, rankP;
     ModelSpace * modelspace;
+    double ZeroBody;
     arma::mat OneBody, S;
     TwoBodyOperator TwoBody;
     bool orthonormalized = false;
@@ -18,7 +19,27 @@ class Operator
     // Constructor
     ~Operator();
     Operator();
-    Operator(ModelSpace& ms, int rankJ=0, int rankP=1, int rankTz=0);
+    Operator(ModelSpace& ms, int rankJ=0, int rankP=1);
+    Operator( const Operator& rhs); ///< Copy constructor
+    Operator( Operator&&);
+
+    Operator& operator=(Operator&& rhs);
+    Operator& operator=( const Operator& rhs);
+
+    Operator& operator+=( const Operator& rhs);
+    Operator operator+( const Operator& rhs) const;
+    Operator& operator+=( const double& rhs);
+    Operator operator+( const double& rhs) const;
+    Operator& operator-=( const Operator& rhs);
+    Operator operator-( const Operator& rhs) const;
+    Operator operator-( ) const;
+    Operator& operator-=( const double& rhs);
+    Operator operator-( const double& rhs) const;
+    Operator& operator*=( const double rhs);
+    Operator operator*( const double rhs) const;
+    Operator& operator/=( const double rhs);
+    Operator operator/( const double rhs) const;
+
 
     void SetDiracCoulombHamiltonian(bool OneBody=true, bool TwoBody=true);
     void SetCoulombHamiltonian(bool OneBody=true, bool TwoBody=true);
@@ -33,5 +54,9 @@ class Operator
     ModelSpace * GetModelSpace() const {return modelspace;};
     arma::mat EmbedBasisTrans2(arma::mat, TwoBodyChannel&);
     void Print();
+    Operator DoNormalOrdering(int);
+    Operator DoNormalOrdering() {return DoNormalOrdering(1);};
+    Operator UndoNormalOrdering() {return DoNormalOrdering(-1);};
+    arma::vec DiagonalizeOneBody();
 };
 #endif

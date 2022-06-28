@@ -21,15 +21,22 @@ class TwoBodyOperatorChannel
 class TwoBodyOperator
 {
   public:
-    int rankJ, rankP, rankTz;
+    int rankJ, rankP;
     ModelSpace * modelspace;
     std::map<std::array<int,2>,TwoBodyOperatorChannel> Channels;
     int NMesh;
+    double Rmax;
+    std::string FileNameCoulomb;
+    std::string MeshType;
 
     // Constructor
     ~TwoBodyOperator();
     TwoBodyOperator();
-    TwoBodyOperator(ModelSpace& ms, int rankJ=0, int rankP=1, int rankTz=0);
+    TwoBodyOperator(ModelSpace& ms, int rankJ=0, int rankP=1);
+    TwoBodyOperator& operator*=(const double);
+    TwoBodyOperator& operator+=(const TwoBodyOperator&);
+    TwoBodyOperator& operator-=(const TwoBodyOperator&);
+
 
     double Get2BME(int, int, int, int, int, int);
     double Get2BME(int, int, Orbit&, Orbit&, Orbit&, Orbit&);
@@ -43,10 +50,15 @@ class TwoBodyOperator
 
     void SetTwoBodyCoulombTerm();
     void SetNMesh(int num) {NMesh=num;};
+    void SetRmax(double d) {Rmax=d;};
+    void SetMeshType(std::string str) {MeshType=str;};
+    void SetFileCoulomb(std::string str) {FileNameCoulomb=str;};
+    void ReadFileInteraction(std::string);
+    void WriteFileInteraction(std::string);
+    long long int CountInteractionMEs();
     double MECoulomb(Orbit&, Orbit&, Orbit&, Orbit&, int);
     double TestMECoulomb(Orbit&, Orbit&, Orbit&, Orbit&, int);
     void StoreCoulombIntegrals();
     double GetCoulombIntegral(int, int, int, int, int);
-    
 };
 #endif

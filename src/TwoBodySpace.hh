@@ -10,11 +10,11 @@ class TwoBodyChannel
   public:
     // Constructors
     ~TwoBodyChannel();
-    TwoBodyChannel(int, int, int, Orbits&);
+    TwoBodyChannel(int, int, Orbits&);
 
     // Member variables
     Orbits* orbits;
-    int J, Prty, Tz, number_states;
+    int J, Prty, number_states;
     std::vector<int> index1, index2;
     std::map<std::array<int,2>, int> phase, index;
 
@@ -41,13 +41,13 @@ class TwoBodySpace
     Orbits* orbits;
     int number_channels;
     std::vector<TwoBodyChannel> channels;
-    std::map< std::array<int,3>, int > index_from_JPZ;
+    std::map< std::array<int,2>, int > index_from_JP;
 
     // Function Declerations
     int GetNumberChannels() {return number_channels;};
     void PrintSpace() {for(auto tbc: channels) tbc.PrintChannel();};
-    int GetChannelIndex(int J, int Prty, int Tz) {return index_from_JPZ[{J,Prty,Tz}];};
+    int GetChannelIndex(int J, int Prty) {return index_from_JP[{J,Prty}];};
     TwoBodyChannel& GetChannel(int idx) {return channels[idx];};
-    TwoBodyChannel& GetChannel(int J, int Prty, int Tz) {return GetChannel(index_from_JPZ[{J,Prty,Tz}]);};
+    TwoBodyChannel& GetChannel(int J, int Prty) {return GetChannel(index_from_JP[{J,Prty}]);};
 };
 #endif

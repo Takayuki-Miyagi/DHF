@@ -5,8 +5,8 @@
 TwoBodyChannel::~TwoBodyChannel()
 {}
 
-TwoBodyChannel::TwoBodyChannel(int J, int Prty, int Tz, Orbits& orbs)
-  : J(J), Prty(Prty), Tz(Tz), orbits(&orbs)
+TwoBodyChannel::TwoBodyChannel(int J, int Prty, Orbits& orbs)
+  : J(J), Prty(Prty), orbits(&orbs)
 {
   int num = 0;
   int norbs = orbits->GetNumberOrbits();
@@ -14,7 +14,6 @@ TwoBodyChannel::TwoBodyChannel(int J, int Prty, int Tz, Orbits& orbs)
     for (int iq=ip; iq<norbs; iq++){
       Orbit& op = orbits->GetOrbit(ip);
       Orbit& oq = orbits->GetOrbit(iq);
-      if(op.ls + oq.ls != 2*Tz) continue;
       if(pow((-1), (op.l+oq.l)) != Prty) continue;
       if(op.j2 + oq.j2 < 2*J) continue;
       if(std::abs(op.j2 - oq.j2) > 2*J) continue;
@@ -44,8 +43,7 @@ void TwoBodyChannel::PrintChannel()
     std::cout
       << "J =" << std::setw(wint) << J
       << ", Prty =" << std::setw(wint) << Prty
-      << ", Tz =" << std::setw(wint) << Tz << " | "
-      << "np =" << std::setw(wint) << op.n
+      << " | np =" << std::setw(wint) << op.n
       << ", lp =" << std::setw(wint) << op.l
       << ", j2p =" << std::setw(wint) << op.j2
       << ", lsp =" << std::setw(wint) << op.ls << " | "
@@ -67,14 +65,12 @@ TwoBodySpace::TwoBodySpace(Orbits& orbs)
 {
   int num = 0;
   for (int J=0; J<2*orbits->lmax+2; J++){
-    for (int Tz : {-1, 0, 1}){
-      for (int Prty : {1, -1}){
-        TwoBodyChannel tbc = TwoBodyChannel(J, Prty, Tz, orbs);
-        if(tbc.GetNumberStates() < 1) continue;
-        index_from_JPZ[{J,Prty,Tz}] = num;
-        channels.push_back(tbc);
-        num += 1;
-      }
+    for (int Prty : {1, -1}){
+      TwoBodyChannel tbc = TwoBodyChannel(J, Prty, orbs);
+      if(tbc.GetNumberStates() < 1) continue;
+      index_from_JP[{J,Prty}] = num;
+      channels.push_back(tbc);
+      num += 1;
     }
   }
   number_channels = num;

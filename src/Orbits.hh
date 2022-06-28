@@ -16,7 +16,7 @@ class Orbit {
     Orbit(int n, int l, int j2, int LS, int idx);
 
     // Member variables
-    int n, l, j2, kappa, ls, idx;
+    int n, l, j2, kappa, ls, occ, idx;
     std::string radial_function_type;
 
     // Class Member Declerations

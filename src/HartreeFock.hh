@@ -32,7 +32,11 @@ class HartreeFock
     Operator& H;
     ModelSpace * modelspace;
     Monopole monopole;
-    arma::mat C, rho, F, V, S;
+    arma::mat C;  // (CB|HF)
+    arma::mat rho;
+    arma::mat F;
+    arma::mat V;
+    arma::mat S;
     arma::vec SPEs;
     arma::uvec ElectronStates, PositronStates;
     double r;
