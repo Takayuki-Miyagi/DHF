@@ -17,14 +17,15 @@ int main(int argc, char** argv)
   std::string atom = parameters.s("atom");
   std::string radial_function_type = parameters.s("radial_function_type");
   std::string integral_mesh_type = parameters.s("eeintegral_mesh_type");
+  std::string valence_space = parameters.s("valence_space");
   std::string filename_coulomb = parameters.s("filename_coulomb");
   std::string filename_summary = parameters.s("filename_summary");
   int NMesh = parameters.i("NMesh");
   double integral_rmax = parameters.d("eeintegral_rmax");
   double zeta_inv = parameters.d("zeta_inv");
-  Orbits orbits = Orbits(orbitals, radial_function_type); 
-  orbits.Print();
-  ModelSpace ms = ModelSpace(atom, 1/zeta_inv, orbits);
+  Orbits orbits = Orbits(orbitals, radial_function_type);
+  //orbits.Print();
+  ModelSpace ms = ModelSpace(atom, 1/zeta_inv, orbits, valence_space);
 
   Operator H = Operator(ms);
   H.TwoBody.SetNMesh(NMesh);
@@ -43,7 +44,6 @@ int main(int argc, char** argv)
 
   HFMBPT MBPT = HFMBPT(H, HF.C);
   Operator HNO = MBPT.TransformBasis(H);
-  HNO.modelspace->UpdateOrbitals(HF.SPEs);
   HNO = HNO.DoNormalOrdering();
   std::cout << " EHF: " << std::setw(14) << std::setprecision(8) << HNO.ZeroBody << std::endl;
   std::cout << " MP2: " << std::setw(14) << std::setprecision(8) << HNO.ZeroBody + MBPT.GetMP2_Energy(HNO) << std::endl;

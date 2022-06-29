@@ -29,12 +29,12 @@ Operator::Operator(ModelSpace& ms, int rankJ, int rankP)
 }
 
 Operator::Operator(const Operator& op)
-  : modelspace(op.modelspace), rankJ(op.rankJ), rankP(op.rankP), ZeroBody(op.ZeroBody), 
+  : modelspace(op.modelspace), rankJ(op.rankJ), rankP(op.rankP), ZeroBody(op.ZeroBody),
   S(op.S), OneBody(op.OneBody), TwoBody(op.TwoBody), orthonormalized(op.orthonormalized)
 {}
 
 Operator::Operator(Operator&& op)
-  : modelspace(op.modelspace), rankJ(op.rankJ), rankP(op.rankP), ZeroBody(op.ZeroBody), 
+  : modelspace(op.modelspace), rankJ(op.rankJ), rankP(op.rankP), ZeroBody(op.ZeroBody),
   S(std::move(op.S)), OneBody(std::move(op.OneBody)), TwoBody(std::move(op.TwoBody)), orthonormalized(op.orthonormalized)
 {}
 
@@ -109,7 +109,7 @@ Operator& Operator::operator-=(const Operator& rhs)
   TwoBody -= rhs.TwoBody;
   return *this;
 }
-  
+
 Operator Operator::operator-(const Operator& rhs) const
 {
   return ( Operator(*this) -= rhs );
@@ -274,7 +274,6 @@ Operator Operator::DoNormalOrdering(int sign)
 {
   std::cout << std::endl;
   std::cout << "Taking normal ordering..." << std::endl;
-  modelspace->PrintHoleOrbits();
   Operator op(*this);
   if(op.rankJ==0 and op.rankP==1){
     for (auto hole_i : modelspace->hole_occ){

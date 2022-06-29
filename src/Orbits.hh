@@ -16,7 +16,8 @@ class Orbit {
     Orbit(int n, int l, int j2, int LS, int idx);
 
     // Member variables
-    int n, l, j2, kappa, ls, occ, idx;
+    int n, l, j2, kappa, ls, idx;
+    double occ;
     std::string radial_function_type;
 
     // Class Member Declerations
@@ -68,6 +69,7 @@ class Orbits : public Orbit {
     int GetOrbitIndex(int, int, int);
     int GetOrbitIndex(Orbit& o) {return o.idx;};
     int GetOrbitIndex(int, int, int, int);
+    int GetOrbitIndex(std::string);
     int GetNumberOrbits() {return orbits.size();};
     void SetOrbits(int nmax, int lmax);
     void Print();

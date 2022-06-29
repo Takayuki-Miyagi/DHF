@@ -32,7 +32,7 @@ class ModelSpace : public OneBodySpace
   public:
     ~ModelSpace();
     ModelSpace(int, double, double, Orbits);
-    ModelSpace(std::string, double, Orbits);
+    ModelSpace(std::string atom, double zeta, Orbits orbs, std::string valence_space="");
 
     Orbits orbits;
     OneBodySpace one;
@@ -49,7 +49,7 @@ class ModelSpace : public OneBodySpace
     std::set<int> large_components;
     std::set<int> small_components;
     std::set<int> all_orbits;
-    
+
 
     int GetElectronNumber() {return Ne;};
     std::map<int,double> AssignHoles(int);
@@ -57,6 +57,7 @@ class ModelSpace : public OneBodySpace
     double GetZeta() {return zeta;};
     void PrintModelSpace(bool, bool);
     void PrintHoleOrbits();
+    void PrintOrbitals();
     Orbits& GetOrbits() {return orbits;};
     std::string GetOrbitLabel(int idx) {return orbits.GetOrbitLabel(idx);};
     Orbit& GetOrbit(int idx) {return orbits.GetOrbit(idx);};
@@ -68,12 +69,13 @@ class ModelSpace : public OneBodySpace
     int GetOrbitIndex(int n, int kappa, int ls) {return orbits.GetOrbitIndex(n,kappa,ls);};
     int GetOrbitIndex(Orbit& o) {return orbits.GetOrbitIndex(o);};
     int GetOrbitIndex(int n, int l, int j2, int ls) {return orbits.GetOrbitIndex(n,l,j2,ls);};
+    int GetOrbitIndex(std::string label) {return orbits.GetOrbitIndex(label);};
     int GetNumberOrbits() {return orbits.GetNumberOrbits();};
+    void UpdateOccupation(std::map<int,double> holes);
     //void UpdateHoles(std::map<int,double> holes) {hole_occ = holes;};
     //void UpdateHoles(arma::vec SPEs) {hole_occ = GetElectronOccupation(SPEs);};
     //std::map<int,double> GetElectronOccupation(arma::vec SPEs);
-    void UpdateOccupation(std::map<int,double> holes);
-    void UpdateOrbitals(arma::vec);
+    //void UpdateOrbitals(arma::vec);
 
     OneBodySpace& GetOneBodySpace() {return one;};
     TwoBodySpace& GetTwoBodySpace() {return two;};

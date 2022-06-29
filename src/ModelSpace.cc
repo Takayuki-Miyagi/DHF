@@ -18,14 +18,14 @@ OneBodySpace::OneBodySpace(Orbits& orbs)
   : orbits(&orbs)
 {
   std::set<int> tmp;
-  for (Orbit& o : orbits->orbits) tmp.insert(o.kappa); 
-  for (auto it : tmp) kappas.push_back(it);
+  for (Orbit& o : orbits->orbits) tmp.insert(o.kappa);
+  for (auto & it : tmp) kappas.push_back(it);
   std::sort(kappas.begin(), kappas.end(), std::greater<int>());
   for (int channel_idx=0; channel_idx<kappas.size(); channel_idx++){
     std::vector <int> idxs;
     int n_large = 0;
     int n_small = 0;
-    for (auto o : orbits->orbits){
+    for (auto & o : orbits->orbits){
       if (o.kappa != kappas[channel_idx]) continue;
       if (o.ls == 1) n_large += 1;
       if (o.ls ==-1) n_small += 1;
@@ -61,10 +61,10 @@ ModelSpace::ModelSpace(int Ne, double Z, double zeta, Orbits orbs)
   hole_occ = AssignHoles(Ne);
   one = OneBodySpace(orbits);
   two = TwoBodySpace(orbits);
-  PrintHoleOrbits();
+  //PrintHoleOrbits();
 }
 
-ModelSpace::ModelSpace(std::string atom, double zeta, Orbits orbs)
+ModelSpace::ModelSpace(std::string atom, double zeta, Orbits orbs, std::string valence_space)
   : zeta(zeta), orbits(orbs)
 {
   std::vector<std::string> periodic_table = {
@@ -81,7 +81,7 @@ ModelSpace::ModelSpace(std::string atom, double zeta, Orbits orbs)
     "Pa", "U",  "Np", "Pu", "Am", "Cm", "Bk", "Cf", "Es", "Fm",
     "Md", "No", "Lr", "Rf", "Db", "Sg", "Bh", "Hs", "Mt", "Ds",
     "Rg", "Cn", "Nh", "Fl", "Mc", "Lv", "Ts", "Og" };
-  
+
   int i = 0;
   while (not isdigit(atom[i]) and atom[i] != '+' and atom[i] != '-') i++;
   std::string element = atom.substr(0,i);
@@ -104,9 +104,53 @@ ModelSpace::ModelSpace(std::string atom, double zeta, Orbits orbs)
     std::cout << "Warning: Unknown format of atom" << std::endl;
   }
   hole_occ = AssignHoles(Ne);
+  UpdateOccupation(hole_occ);
+
+  small_components.clear();
+  large_components.clear();
+  all_orbits.clear();
+  holes.clear();
+  particles.clear();
+  core.clear();
+  valence.clear();
+  qspace.clear();
+
+  for (int i=0; i<GetNumberOrbits(); i++){
+    Orbit & o = GetOrbit(i);
+    if(o.ls ==-1) small_components.insert(i);
+    if(o.ls == 1) large_components.insert(i);
+    all_orbits.insert(i);
+    auto it = hole_occ.find(i);
+    if(it != hole_occ.end()) holes.insert(i);
+    else particles.insert(i);
+  }
+
+  if(valence_space == ""){
+    for (int i = 0; i<GetNumberOrbits(); i++){
+      auto it = hole_occ.find(i);
+      if(it == hole_occ.end()) qspace.insert(i);
+      else core.insert(i);
+    }
+  }
+  else{
+    std::istringstream ss(valence_space);
+    std::string orbit_str, core_str;
+    getline(ss, core_str, ',');
+    auto it = find(periodic_table.begin(),periodic_table.end(),core_str);
+    int Ncore = it - periodic_table.begin();
+    std::map<int,double> holes = AssignHoles(Ncore);
+    for (auto & it : holes) core.insert(it.first);
+    while(getline(ss, orbit_str, ',')) valence.insert(GetOrbitIndex(orbit_str));
+    for (int i=0; i<GetNumberOrbits(); i++){
+      auto it_core = core.find(i);
+      auto it_valence = valence.find(i);
+      if(it_core == core.end() and it_valence == valence.end()) qspace.insert(i);
+    }
+  }
   one = OneBodySpace(orbits);
   two = TwoBodySpace(orbits);
-  PrintHoleOrbits();
+  //PrintHoleOrbits();
+  PrintOrbitals();
 }
 
 std::map<int,double> ModelSpace::AssignHoles(int N_ele)
@@ -120,7 +164,6 @@ std::map<int,double> ModelSpace::AssignHoles(int N_ele)
   // P:  5s 3f 3f 3f 3f 3f 3f 3f 4d 4d 4d 4d 4d 5p 5p 5p
   // Q:  6s 4f 4f 4f 4f 4f 4f 4f 5d 5d 5d 5d 5d 6p 6p 6p
   //
-  // e = n + l
   std::map<int,double> tmp_holes;
   int N = 0;
   for (int e=0; e<=orbits.GetNmax(); ++e) {
@@ -158,108 +201,103 @@ void ModelSpace::PrintModelSpace(bool print_obs, bool print_tbs)
 
 void ModelSpace::PrintHoleOrbits()
 {
+  std::cout << std::endl;
   std::cout << " Number of electrons: " << GetElectronNumber() << std::endl;
   std::cout << " List of hole orbits: " << std::endl;
- for (auto& it: hole_occ)
- {
-   Orbit& o = orbits.GetOrbit(it.first);
-   int width = 4;
-   std::cout << " n =" << std::setw(width) << o.n << ", l =" << std::setw(width) << o.l << ", j2 =" << std::setw(width) << o.j2 << 
-     ", prob = " << std::setw(width) << it.second << ", occ = " << std::setw(width) << it.second*(o.j2+1) << std::endl;
- }
+  for (auto & it: hole_occ)
+  {
+    Orbit& o = orbits.GetOrbit(it.first);
+    int width = 4;
+    std::cout << " idx =" << std::setw(width) << o.idx <<
+      ", n =" << std::setw(width) << o.n << ", l =" << std::setw(width) << o.l << ", j2 =" << std::setw(width) << o.j2 <<
+      ", prob = " << std::setw(width) << it.second << ", occ = " << std::setw(width) << it.second*(o.j2+1) << std::endl;
+  }
+  std::cout << std::endl;
 }
 
-//std::map<int,double> ModelSpace::GetElectronOccupation(arma::vec SPEs)
-//{
-//  std::map<int,double> tmp_holes;
-//  OneBodySpace& obs = GetOneBodySpace();
-//  for (int ich=0; ich< obs.GetNumberChannels(); ich++) {
-//    std::vector<unsigned long long> tmp(obs.channels[ich].begin(), obs.channels[ich].end());
-//    arma::uvec sub_idx(std::vector<unsigned long long>(tmp.begin(), tmp.end()));
-//    arma::vec SPE_ch = SPEs(sub_idx);
-//    arma::uvec sorted_idx = sub_idx(arma::sort_index(SPE_ch));
-//    std::vector<double> tmp_hole;
-//    for (auto & it : hole_occ){
-//      Orbit& o_h = GetOrbit(it.first);
-//      if (o_h.kappa != obs.kappas[ich]) continue;
-//      tmp_hole.push_back(it.second);
-//    }
-//    int cnt = 0;
-//    for (int i : sorted_idx){
-//      cnt += 1;
-//      if(cnt <= obs.n_small_channel[ich]) continue;
-//      if(cnt-obs.n_small_channel[ich] > tmp_hole.size()) break;
-//      tmp_holes[i] = tmp_hole[cnt-obs.n_small_channel[ich]-1];
-//    }
-//  }
-//  return tmp_holes;
-//}
-//
+void ModelSpace::PrintOrbitals()
+{
+  std::cout << std::endl;
+  for (int i = 0; i<GetNumberOrbits(); i++){
+    Orbit & o = orbits.GetOrbit(i);
+    std::string ph = "", cvq = "";
+    auto it_hole = holes.find(i);
+    auto it_particle = particles.find(i);
+    auto it_core = core.find(i);
+    auto it_valence = valence.find(i);
+    auto it_qspace = qspace.find(i);
+    if(it_hole != holes.end()) ph = "hole";
+    if(it_particle != particles.end()) ph = "particle";
+    if(it_core != core.end()) cvq = "core";
+    if(it_valence != valence.end()) cvq = "valence";
+    if(it_qspace != qspace.end()) cvq = "qspace";
+    int w_int = 4, w_str = 10;
+    std::cout << " index =" << std::setw(w_int) << o.idx <<
+      ", n =" << std::setw(w_int) << o.n << ", l =" << std::setw(w_int) << o.l << ", j2 =" << std::setw(w_int) << o.j2 <<
+      ", L/S =" << std::setw(w_int) << o.ls <<
+      ", prob = " << std::setw(w_int+2) << o.occ << ", occ = " << std::setw(w_int+2) << o.occ*(o.j2+1) <<
+      ", " << std::setw(w_str) << ph;
+      if(cvq != "") std::cout << ", " << std::setw(w_str) << cvq;
+      std::cout << std::endl;
+  }
+  std::cout << std::endl;
+}
+
 void ModelSpace::UpdateOccupation(std::map<int,double> tmp_holes)
 {
-  hole_occ = tmp_holes;
-  for (auto o : orbits.orbits) o.occ = 0;
-  for (auto it : tmp_holes){
+  for (auto & o : orbits.orbits) o.occ = 0;
+  for (auto & it : tmp_holes){
     Orbit & o = GetOrbit(it.first);
     o.occ = it.second;
   }
 }
 
-void ModelSpace::UpdateOrbitals(arma::vec SPEs)
-{
-  std::map<int,double> tmp_holes;
-  OneBodySpace& obs = GetOneBodySpace();
-
-  small_components.clear();
-  large_components.clear();
-  all_orbits.clear();
-  holes.clear();
-  particles.clear();
-  for (int i=0; i<GetNumberOrbits(); i++) all_orbits.insert(i);
-  for (int ich=0; ich< obs.GetNumberChannels(); ich++) {
-    std::vector<double> tmp_holes_ch;
-    for (auto & it : hole_occ){
-      Orbit& o_h = GetOrbit(it.first);
-      if (o_h.kappa != obs.kappas[ich]) continue;
-      tmp_holes_ch.push_back(it.second);
-    }
-
-    std::vector<unsigned long long> tmp(obs.channels[ich].begin(), obs.channels[ich].end());
-    arma::uvec sub_idx(std::vector<unsigned long long>(tmp.begin(), tmp.end()));
-    arma::vec SPE_ch = SPEs(sub_idx);
-    arma::uvec sorted_idx = sub_idx(arma::sort_index(SPE_ch));
-    int cnt = 0;
-    for (int i : sorted_idx){
-      cnt += 1;
-      if(cnt <= obs.n_small_channel[ich]){
-        small_components.insert(i);
-        all_orbits.insert(i);
-      }
-      else {
-        large_components.insert(i);
-        all_orbits.insert(i);
-      }
-      if(cnt <= obs.n_small_channel[ich]) continue;
-      if(cnt-obs.n_small_channel[ich] > tmp_holes_ch.size()) break;
-      tmp_holes[i] = tmp_holes_ch[cnt-obs.n_small_channel[ich]-1];
-      holes.insert(i);
-    }
-  }
-  hole_occ = tmp_holes;
-  UpdateOccupation(tmp_holes);
-  for (int i : all_orbits){
-    auto it = holes.find(i);
-    if(it != holes.end()) continue;
-    particles.insert(i);
-  }
-  //std::cout << "all orbits: " ;
-  //for (int i : all_orbits) std::cout << i << " ";
-  //std::cout << std::endl;
-  //std::cout << "holes: " ;
-  //for (int i : holes) std::cout << i << " ";
-  //std::cout << std::endl;
-  //std::cout << "paraticles: " ;
-  //for (int i : particles) std::cout << i << " ";
-  //std::cout << std::endl;
-  // TODO: core valence, qspace
-}
+//void ModelSpace::UpdateOrbitals(arma::vec SPEs)
+//{
+//  std::map<int,double> tmp_holes;
+//  OneBodySpace& obs = GetOneBodySpace();
+//
+//  small_components.clear();
+//  large_components.clear();
+//  all_orbits.clear();
+//  holes.clear();
+//  particles.clear();
+//  for (int i=0; i<GetNumberOrbits(); i++) all_orbits.insert(i);
+//  for (int ich=0; ich< obs.GetNumberChannels(); ich++) {
+//    std::vector<double> tmp_holes_ch;
+//    for (auto & it : hole_occ){
+//      Orbit& o_h = GetOrbit(it.first);
+//      if (o_h.kappa != obs.kappas[ich]) continue;
+//      tmp_holes_ch.push_back(it.second);
+//    }
+//
+//    std::vector<unsigned long long> tmp(obs.channels[ich].begin(), obs.channels[ich].end());
+//    arma::uvec sub_idx(std::vector<unsigned long long>(tmp.begin(), tmp.end()));
+//    arma::vec SPE_ch = SPEs(sub_idx);
+//    arma::uvec sorted_idx = sub_idx(arma::sort_index(SPE_ch));
+//    int cnt = 0;
+//    for (int i : sorted_idx){
+//      cnt += 1;
+//      if(cnt <= obs.n_small_channel[ich]){
+//        small_components.insert(i);
+//        all_orbits.insert(i);
+//      }
+//      else {
+//        large_components.insert(i);
+//        all_orbits.insert(i);
+//      }
+//      if(cnt <= obs.n_small_channel[ich]) continue;
+//      if(cnt-obs.n_small_channel[ich] > tmp_holes_ch.size()) break;
+//      tmp_holes[i] = tmp_holes_ch[cnt-obs.n_small_channel[ich]-1];
+//      holes.insert(i);
+//    }
+//  }
+//  hole_occ = tmp_holes;
+//  UpdateOccupation(tmp_holes);
+//  for (int i : all_orbits){
+//    auto it = holes.find(i);
+//    if(it != holes.end()) continue;
+//    particles.insert(i);
+//  }
+//  // TODO: core valence, qspace
+//}

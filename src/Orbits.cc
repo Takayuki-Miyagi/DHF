@@ -1,4 +1,6 @@
 #include <iomanip>
+#include <iostream>
+#include <sstream>
 #include <gsl/gsl_sf_laguerre.h>
 #include <gsl/gsl_sf_gamma.h>
 #include "Orbits.hh"
@@ -38,20 +40,20 @@ std::array<int,2> Orbit::kappa2lj(int kappa)
 void Orbit::Print()
 {
   int width = 6;
-  std::cout << 
-    " index =" << std::setw(width) << idx << 
-    ", n =" << std::setw(width) << n << 
-    ", l =" << std::setw(width) << l << 
-    ", j2 =" << std::setw(width) << j2 << 
-    ", kappa =" << std::setw(width) << kappa << 
-    ", L/S =" << std::setw(width) << ls << 
+  std::cout <<
+    " index =" << std::setw(width) << idx <<
+    ", n =" << std::setw(width) << n <<
+    ", l =" << std::setw(width) << l <<
+    ", j2 =" << std::setw(width) << j2 <<
+    ", kappa =" << std::setw(width) << kappa <<
+    ", L/S =" << std::setw(width) << ls <<
     ", radial wf type: " << radial_function_type << std::endl;
 }
 
 double Orbit::RadialFunction(double x, double zeta, double par, bool exp_weight) {
   if (radial_function_type == "LSpinor") {
-    if(ls == 1) return _LSpinor_P_wave_function_rspace(x, zeta, par, exp_weight); 
-    if(ls ==-1) return _LSpinor_Q_wave_function_rspace(x, zeta, par, exp_weight); 
+    if(ls == 1) return _LSpinor_P_wave_function_rspace(x, zeta, par, exp_weight);
+    if(ls ==-1) return _LSpinor_Q_wave_function_rspace(x, zeta, par, exp_weight);
   }
   else if (radial_function_type=="NonRel_Laguerre"){
     return _Laguerre_wave_function(x, zeta, exp_weight);
@@ -84,7 +86,7 @@ double Orbit::_LSpinor_P_wave_function_rspace(double x, double zeta, double Z, b
   int nr = n;
   if(kappa>0) nr += 1;
   double T = gsl_sf_laguerre_n(nr, 2 * gam, eta) * (N - kappa) / (nr + 2 * gam);
-  if (nr > 0) T -= gsl_sf_laguerre_n(nr - 1, 2 * gam, eta); 
+  if (nr > 0) T -= gsl_sf_laguerre_n(nr - 1, 2 * gam, eta);
   if(exp_weight) return T * pow(eta, gam) * Norm;
   return T * pow(eta, gam) * exp(-0.5 * eta) * Norm;
 }
@@ -95,11 +97,11 @@ double Orbit::_LSpinor_Q_wave_function_rspace(double x, double zeta, double Z, b
   double gam = pars[0];
   double N = pars[1];
   double Norm = pars[2];
-  if (Norm == 0.0) return 0.0; 
+  if (Norm == 0.0) return 0.0;
   int nr = n;
   if(kappa>0) nr += 1;
   double T = -gsl_sf_laguerre_n(nr, 2 * gam, eta) * (N - kappa) / (nr + 2 * gam);
-  if (nr > 0) T -= gsl_sf_laguerre_n(nr - 1, 2 * gam, eta); 
+  if (nr > 0) T -= gsl_sf_laguerre_n(nr - 1, 2 * gam, eta);
   if(exp_weight) return T * pow(eta, gam) * Norm;
   return T * pow(eta, gam) * exp(-0.5 * eta) * Norm;
 }
@@ -110,7 +112,7 @@ double Orbit::_LSpinor_P_wave_function_rspace_dr(double x, double zeta, double Z
   double gam = pars[0];
   double N = pars[1];
   double Norm = pars[2];
-  if (Norm == 0.0) return 0.0; 
+  if (Norm == 0.0) return 0.0;
   int nr = n;
   if(kappa>0) nr += 1;
   double T1 = _LSpinor_P_wave_function_rspace(x, zeta, Z) * ((gam / eta) - 0.5);
@@ -172,7 +174,7 @@ Orbits::~Orbits()
 {}
 
 Orbits::Orbits()
-  : lmax(-1), radial_function_type("default"), relativistic(true), orbitals("none"), 
+  : lmax(-1), radial_function_type("default"), relativistic(true), orbitals("none"),
   labels_orbital_angular_momentum({ "s", "p", "d", "f", "g", "h", "i", "k", "l", "m", "n", "o", "q", "r", "t", "u", "v", "w", "x", "y", "z" })
 {}
 
@@ -193,11 +195,11 @@ Orbits::Orbits(int nmax, int l, std::string radial_function_type, bool relativis
 }
 
 Orbits::Orbits(std::string orbitals, std::string radial_function_type)
-  : lmax(-1), radial_function_type(radial_function_type), orbitals(orbitals), 
+  : lmax(-1), radial_function_type(radial_function_type), orbitals(orbitals),
   labels_orbital_angular_momentum({ "s", "p", "d", "f", "g", "h", "i", "k", "l", "m", "n", "o", "q", "r", "t", "u", "v", "w", "x", "y", "z" })
 {
   // orbitals format : rel-s(num)-p(num)-d(num)-f(num)-g(num)-... or nonrel-s(num)-p(num)-d(num)-...
-  
+
   std::string sep = "-";
   int sep_length = sep.length();
   std::vector<std::string> ss;
@@ -322,6 +324,30 @@ int Orbits::GetOrbitIndex(int n, int l, int j2, int ls)
   }
 }
 
+// label format: (large or small)(n)(angular momentum)(j2)
+// example: l0s1, s0p3, and so on.
+int Orbits::GetOrbitIndex(std::string label)
+{
+  std::string ls_str = label.substr(0,1);
+  int ls;
+  if(ls_str == "l") ls = 1;
+  else if(ls_str == "s") ls =-1;
+  else {
+    std::cout << " Unknown orbit label: " << label << std::endl;
+    exit(0);
+  }
+  std::string orbit_label = label.substr(1,label.size());
+  int i = 0;
+  while (isdigit(orbit_label[i])) i++;
+  int n, j2;
+  std::stringstream(orbit_label.substr(0,i)) >> n;
+
+  auto it = find(labels_orbital_angular_momentum.begin(), labels_orbital_angular_momentum.end(), orbit_label.substr(i,1));
+  int l = it - labels_orbital_angular_momentum.begin();
+  std::stringstream(orbit_label.substr(i+1,orbit_label.size())) >> j2;
+  return GetOrbitIndex(n, l, j2, ls);
+}
+
 
 size_t limit = 1000;
 double epsabs = 1.e-12;
@@ -399,9 +425,9 @@ double MEKinetic(Orbit& o1, Orbit& o2, double zeta, double Z) {
 
   if(o1.radial_function_type=="NonRel_Laguerre"){
     if(o1.n==o2.n) return 0.5*(4*o1.n+2*o1.l+3) / (2*o1.l+3)/zeta/zeta;
-    if(o1.n<=o2.n-1) return 0.5*(4*o1.n+4*o1.l+6)/(2*o1.l+3) * 
+    if(o1.n<=o2.n-1) return 0.5*(4*o1.n+4*o1.l+6)/(2*o1.l+3) *
       sqrt(tgamma(o2.n+1)*tgamma(o1.n+2*o1.l+3) / (tgamma(o1.n+1)*tgamma(o2.n+2*o1.l+3)))/zeta/zeta;
-    if(o1.n>=o2.n+1) return 0.5*(4*o2.n+4*o1.l+6)/(2*o1.l+3) * 
+    if(o1.n>=o2.n+1) return 0.5*(4*o2.n+4*o1.l+6)/(2*o1.l+3) *
       sqrt(tgamma(o1.n+1)*tgamma(o2.n+2*o1.l+3) / (tgamma(o2.n+1)*tgamma(o1.n+2*o1.l+3)))/zeta/zeta;
   }
 

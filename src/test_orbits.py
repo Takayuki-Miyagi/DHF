@@ -31,4 +31,4 @@ for atom, orbitals, zeta_inv in itertools.product(atoms, orbitals_list, zetai_li
     ARGS["zeta_inv"] = zeta_inv
     if(orbitals.find("nonrel") != -1): ARGS["radial_function_type"] = "NonRel_Laguerre"
     cmd = ' '.join(["time","./OrbitsTest.exe",] + [f"{x}={ARGS[x]}" for x in ARGS.keys()])
-    subprocess.call(cmd, shell=True)    
+    subprocess.call(cmd, shell=True)

@@ -139,8 +139,8 @@ void HartreeFock::DiagonalizeFock() {
 void HartreeFock::UpdateDensityMatrix() {
   int norbs = modelspace->GetNumberOrbits();
   arma::mat tmp(norbs, norbs, arma::fill::zeros);
-  modelspace->UpdateOrbitals(SPEs);
-  for ( auto hole : modelspace->hole_occ) {
+  //modelspace->UpdateOrbitals(SPEs);
+  for ( auto & hole : modelspace->hole_occ) {
     tmp(hole.first,hole.first) = hole.second;
   }
   rho = C * tmp * C.t();
@@ -163,9 +163,9 @@ void HartreeFock::CalcEnergy() {
 
 void HartreeFock::PrintStatus(int n_iter) {
   std::cout << "n iter:" << std::setw(4) << n_iter
-    << ", OneBody: " << std::fixed << std::setw(12) << E1
-    << ", TwoBody: " << std::fixed << std::setw(12) << E2
-    << ", EHF: " << std::fixed << std::setw(12) << EHF
+    << ", OneBody: " << std::fixed << std::setw(18) << E1
+    << ", TwoBody: " << std::fixed << std::setw(18) << E2
+    << ", EHF: " << std::fixed << std::setw(18) << EHF
     << std::endl;
 }
 

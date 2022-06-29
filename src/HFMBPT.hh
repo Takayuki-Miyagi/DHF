@@ -20,6 +20,7 @@ class HFMBPT
     void SetTransformationMatrix(arma::mat m) {C_trans=m;};
     Operator TransformBasis(Operator&);
     double GetMP2_Energy(Operator &);
+    double GetMP3_Energy(Operator &);
 };
 #endif
 

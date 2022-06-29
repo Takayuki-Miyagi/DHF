@@ -17,7 +17,7 @@ int main(int argc, char** argv)
   std::string radial_function_type = parameters.s("radial_function_type");
   double zeta_inv = parameters.d("zeta_inv");
 
-  Orbits orbits = Orbits(orbitals, radial_function_type); 
+  Orbits orbits = Orbits(orbitals, radial_function_type);
   orbits.Print();
   ModelSpace ms = ModelSpace(atom, 1/zeta_inv, orbits);
 
