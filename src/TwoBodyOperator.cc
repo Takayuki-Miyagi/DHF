@@ -26,7 +26,8 @@ TwoBodyOperator::TwoBodyOperator()
 {}
 
 TwoBodyOperator::TwoBodyOperator(ModelSpace& ms, int rankJ, int rankP)
-  : modelspace(&ms), rankJ(rankJ), rankP(rankP), NMesh(2000), Rmax(100), MeshType("Legendre")
+  : modelspace(&ms), rankJ(rankJ), rankP(rankP), NMesh(2000), Rmax(100), MeshType("Legendre"),
+  hermitian(true), antihermitian(false)
 {
   TwoBodySpace& tbs = modelspace->two;
   for (int ichbra=0; ichbra<tbs.GetNumberChannels(); ichbra++){
@@ -70,7 +71,6 @@ TwoBodyOperator& TwoBodyOperator::operator-=(const TwoBodyOperator& rhs)
   }
   return *this;
 }
-
 
 
 double TwoBodyOperator::Get2BME(int ichbra, int ichket, int i, int j, int k, int l)
@@ -138,7 +138,8 @@ void TwoBodyOperator::Set2BME(int ichbra, int ichket, int i, int j, int k, int l
   }
   Channels[{ichbra,ichket}].MEs(idxbra,idxket) = me * phase;
   if(ichbra != ichket) return;
-  Channels[{ichbra,ichket}].MEs(idxket,idxbra) = me * phase;
+  if(hermitian) Channels[{ichbra,ichket}].MEs(idxket,idxbra) = me * phase;
+  if(antihermitian) Channels[{ichbra,ichket}].MEs(idxket,idxbra) =-me * phase;
 }
 
 void TwoBodyOperator::Set2BME(int ichbra, int ichket, Orbit& oi, Orbit& oj, Orbit& ok, Orbit& ol, double me)
@@ -292,7 +293,7 @@ double TwoBodyOperator::TestMECoulomb(Orbit& o1, Orbit& o2, Orbit& o3, Orbit& o4
         double wx = workspace->weights[i];
         double y = workspace->x[j];
         double wy = workspace->weights[j];
-        Integral += wx * wy * 
+        Integral += wx * wy *
           o1.RadialFunction(x, zeta, Z, norm_weight) *
           o2.RadialFunction(y, zeta, Z, norm_weight) *
           o3.RadialFunction(x, zeta, Z, norm_weight) *
@@ -385,8 +386,8 @@ void TwoBodyOperator::StoreCoulombIntegrals()
       for (int i1=0; i1<NMesh; i1++){
         double r = workspace->x[i1];
         double w = workspace->weights[i1];
-        double rnl = w 
-          * o1.RadialFunction(r, zeta, Z, norm_weight) 
+        double rnl = w
+          * o1.RadialFunction(r, zeta, Z, norm_weight)
           * o3.RadialFunction(r, zeta, Z, norm_weight);
         Rnl.push_back(rnl);
       }
@@ -424,8 +425,8 @@ void TwoBodyOperator::StoreCoulombIntegrals()
         for (int i=0; i<NMesh; i++){
           double r = workspace->x[i];
           double w = workspace->weights[i];
-          Int += tmp[{i,L,iket}] * w * 
-            o1.RadialFunction(r, zeta, Z, norm_weight) * 
+          Int += tmp[{i,L,iket}] * w *
+            o1.RadialFunction(r, zeta, Z, norm_weight) *
             o3.RadialFunction(r, zeta, Z, norm_weight);
         }
         #pragma omp critical

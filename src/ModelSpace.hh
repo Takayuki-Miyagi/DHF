@@ -77,6 +77,7 @@ class ModelSpace : public OneBodySpace
     //std::map<int,double> GetElectronOccupation(arma::vec SPEs);
     //void UpdateOrbitals(arma::vec);
 
+    void SetKetIndices();
     OneBodySpace& GetOneBodySpace() {return one;};
     TwoBodySpace& GetTwoBodySpace() {return two;};
     TwoBodyChannel& GetTwoBodyChannel(int idx) {return two.GetChannel(idx);};

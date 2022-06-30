@@ -15,6 +15,8 @@ class Operator
     arma::mat OneBody, S;
     TwoBodyOperator TwoBody;
     bool orthonormalized = false;
+    bool hermitian;
+    bool antihermitian;
 
     // Constructor
     ~Operator();
@@ -47,6 +49,8 @@ class Operator
     void SetOneBodyHamiltonian();
     void SetTwoBodyCoulombInteraction();
     void OrthoNormalize();
+    void SetHermitian();
+    void SetAntiHermitian();
     double Get2BME(int ichbra, int ichket, int i, int j, int k, int l) {return TwoBody.Get2BME(ichbra,ichket,i,j,k,l);};
     double Get2BME(int ichbra, int ichket, Orbit& o1, Orbit& o2, Orbit& o3, Orbit& o4) {return TwoBody.Get2BME(ichbra,ichket,o1,o2,o3,o4);};
     double Get2BME_J(int Jbra, int Jket, int i, int j, int k, int l) {return TwoBody.Get2BME_J(Jbra,Jket,i,j,k,l);};

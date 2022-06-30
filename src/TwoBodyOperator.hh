@@ -28,6 +28,8 @@ class TwoBodyOperator
     double Rmax;
     std::string FileNameCoulomb;
     std::string MeshType;
+    bool hermitian;
+    bool antihermitian;
 
     // Constructor
     ~TwoBodyOperator();
@@ -36,6 +38,8 @@ class TwoBodyOperator
     TwoBodyOperator& operator*=(const double);
     TwoBodyOperator& operator+=(const TwoBodyOperator&);
     TwoBodyOperator& operator-=(const TwoBodyOperator&);
+    void SetHermitian();
+    void SetAntiHermitian();
 
 
     double Get2BME(int, int, int, int, int, int);

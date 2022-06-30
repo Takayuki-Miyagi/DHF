@@ -149,6 +149,7 @@ ModelSpace::ModelSpace(std::string atom, double zeta, Orbits orbs, std::string v
   }
   one = OneBodySpace(orbits);
   two = TwoBodySpace(orbits);
+  SetKetIndices();
   //PrintHoleOrbits();
   PrintOrbitals();
 }
@@ -249,6 +250,41 @@ void ModelSpace::UpdateOccupation(std::map<int,double> tmp_holes)
   for (auto & it : tmp_holes){
     Orbit & o = GetOrbit(it.first);
     o.occ = it.second;
+  }
+}
+
+void ModelSpace::SetKetIndices()
+{
+  std::vector<int> cvq;
+  for (int i = 0; i<GetNumberOrbits(); i++){
+    auto it_core = core.find(i);
+    auto it_valence = valence.find(i);
+    auto it_qspace = qspace.find(i);
+    if(it_core != core.end()) cvq.push_back(0);
+    if(it_valence != valence.end()) cvq.push_back(1);
+    if(it_qspace != qspace.end()) cvq.push_back(2);
+  }
+
+  for (TwoBodyChannel & tbc : two.channels){
+    tbc.KetIndex_cc.clear();
+    tbc.KetIndex_vc.clear();
+    tbc.KetIndex_qc.clear();
+    tbc.KetIndex_vv.clear();
+    tbc.KetIndex_qv.clear();
+    tbc.KetIndex_qq.clear();
+
+    for (int i=0; i<tbc.GetNumberStates(); i++){
+      int ip = tbc.GetOrbitIndex1(i);
+      int iq = tbc.GetOrbitIndex2(i);
+      int cvq_p = cvq[ip];
+      int cvq_q = cvq[iq];
+      if (cvq_p+cvq_q==0)      tbc.KetIndex_cc.push_back(i); // 00
+      if (cvq_p+cvq_q==1)      tbc.KetIndex_vc.push_back(i); // 01
+      if (std::abs(cvq_p-cvq_q)==2) tbc.KetIndex_qc.push_back(i); // 02
+      if (cvq_p*cvq_q==1)      tbc.KetIndex_vv.push_back(i); // 11
+      if (cvq_p+cvq_q==3)      tbc.KetIndex_qv.push_back(i); // 12
+      if (cvq_p+cvq_q==4)      tbc.KetIndex_qq.push_back(i); // 22
+    }
   }
 }
 

@@ -3,6 +3,7 @@
 #include <array>
 #include <vector>
 #include <map>
+#include <armadillo>
 #include "Orbits.hh"
 
 class TwoBodyChannel
@@ -17,6 +18,16 @@ class TwoBodyChannel
     int J, Prty, number_states;
     std::vector<int> index1, index2;
     std::map<std::array<int,2>, int> phase, index;
+    std::vector<int> KetIndex_pp;
+    std::vector<int> KetIndex_hh;
+    std::vector<int> KetIndex_ph;
+    std::vector<int> KetIndex_cc;
+    std::vector<int> KetIndex_vc;
+    std::vector<int> KetIndex_qc;
+    std::vector<int> KetIndex_vv;
+    std::vector<int> KetIndex_qv;
+    std::vector<int> KetIndex_qq;
+
 
     // Function Declerations
     int GetNumberStates() {return number_states;};

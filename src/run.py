@@ -4,7 +4,7 @@ import sys, os, itertools, subprocess
 atoms = ["He"]
 zetai_list = range(2,3)
 orbitals_list = [f"nonrel-s{n}-p{n}" for n in range(8,9)]
-orbitals_list = [f"rel-s{n}-p{n}" for n in range(4,5)]
+orbitals_list = [f"rel-s{n}" for n in range(5,6)]
 ARGS = {}
 NMeshs = list(range(200,1000,100) ) + list(range(1000,11000,1000))
 NMeshs = [500]

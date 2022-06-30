@@ -11,7 +11,7 @@ Operator::Operator()
 {}
 
 Operator::Operator(ModelSpace& ms, int rankJ, int rankP)
-  : modelspace(&ms), rankJ(rankJ), rankP(rankP)
+  : modelspace(&ms), rankJ(rankJ), rankP(rankP), hermitian(true), antihermitian(false)
 {
   ZeroBody = 0;
   int norbs = modelspace->GetNumberOrbits();
@@ -30,12 +30,14 @@ Operator::Operator(ModelSpace& ms, int rankJ, int rankP)
 
 Operator::Operator(const Operator& op)
   : modelspace(op.modelspace), rankJ(op.rankJ), rankP(op.rankP), ZeroBody(op.ZeroBody),
-  S(op.S), OneBody(op.OneBody), TwoBody(op.TwoBody), orthonormalized(op.orthonormalized)
+  S(op.S), OneBody(op.OneBody), TwoBody(op.TwoBody), orthonormalized(op.orthonormalized),
+  hermitian(op.hermitian), antihermitian(op.antihermitian)
 {}
 
 Operator::Operator(Operator&& op)
   : modelspace(op.modelspace), rankJ(op.rankJ), rankP(op.rankP), ZeroBody(op.ZeroBody),
-  S(std::move(op.S)), OneBody(std::move(op.OneBody)), TwoBody(std::move(op.TwoBody)), orthonormalized(op.orthonormalized)
+  S(std::move(op.S)), OneBody(std::move(op.OneBody)), TwoBody(std::move(op.TwoBody)), orthonormalized(op.orthonormalized),
+  hermitian(op.hermitian), antihermitian(op.antihermitian)
 {}
 
 Operator& Operator::operator=(const Operator& rhs) = default;
@@ -131,6 +133,21 @@ Operator Operator::operator-() const
   return (*this)*-1.0;
 }
 
+void Operator::SetHermitian()
+{
+  hermitian = true;
+  antihermitian = false;
+  TwoBody.hermitian = hermitian;
+  TwoBody.antihermitian = antihermitian;
+}
+
+void Operator::SetAntiHermitian()
+{
+  hermitian = false;
+  antihermitian = true;
+  TwoBody.hermitian = hermitian;
+  TwoBody.antihermitian = antihermitian;
+}
 
 void Operator::SetDiracCoulombHamiltonian(bool OneBodyTerm, bool TwoBodyTerm)
 {
